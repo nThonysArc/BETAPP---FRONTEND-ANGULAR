@@ -1,0 +1,20 @@
+<h2 mat-dialog-title>{{ esEdicion ? 'Editar maquina' : 'Nueva maquina' }}</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="form" class="form-grid">
+    <mat-form-field appearance="outline">
+      <mat-label>Nombre</mat-label>
+      <input matInput formControlName="nombre" placeholder="Ej: MAQUINA 01" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Orden</mat-label>
+      <input matInput type="number" formControlName="orden" />
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancelar()">Cancelar</button>
+  <button mat-flat-button color="primary" (click)="guardar()">Guardar</button>
+</mat-dialog-actions>
