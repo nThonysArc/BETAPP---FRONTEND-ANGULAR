@@ -31,8 +31,4 @@ export class CorteService {
   actualizar(procesoDiarioId: number, corteId: number, request: CorteRequest): Observable<Corte> {
     return this.http.put<Corte>(`${this.baseUrl(procesoDiarioId)}/${corteId}`, request);
   }
-
-  consolidar(procesoDiarioId: number, corteId: number): Observable<Corte> {
-    return this.http.post<Corte>(`${this.baseUrl(procesoDiarioId)}/${corteId}/consolidar`, {});
-  }
 }

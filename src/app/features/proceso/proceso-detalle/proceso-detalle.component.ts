@@ -43,7 +43,7 @@ export class ProcesoDetalleComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
-  readonly columnas = ['numeroCorte', 'horaInicio', 'horaFin', 'jabas', 'peso', 'estado', 'acciones'];
+  readonly columnas = ['numeroCorte', 'horaInicio', 'horaFin', 'jabas', 'peso', 'acciones'];
   readonly campanaId = Number(this.route.snapshot.paramMap.get('campanaId'));
   readonly proceso = signal<ProcesoDiario | null>(null);
   readonly cortes = signal<Corte[]>([]);
