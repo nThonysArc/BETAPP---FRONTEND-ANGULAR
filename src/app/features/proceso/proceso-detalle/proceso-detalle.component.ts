@@ -17,6 +17,7 @@ import { Corte } from '../../../core/models/corte.model';
 import { toIsoDateString } from '../../../core/utils/date.util';
 import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading-spinner.component';
+import { ReporteService } from '../../../core/services/reporte.service';
 
 @Component({
   selector: 'app-proceso-detalle',
@@ -38,10 +39,13 @@ import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading
 export class ProcesoDetalleComponent {
   private readonly procesoDiarioService = inject(ProcesoDiarioService);
   private readonly corteService = inject(CorteService);
+  private readonly reporteService = inject(ReporteService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+
+  readonly generandoReporte = signal(false);
 
   readonly columnas = ['numeroCorte', 'horaInicio', 'horaFin', 'jabas', 'peso', 'acciones'];
   readonly campanaId = Number(this.route.snapshot.paramMap.get('campanaId'));
@@ -118,6 +122,28 @@ export class ProcesoDetalleComponent {
     const proceso = this.proceso();
     if (!proceso) return;
     this.router.navigate(['/procesos', proceso.id, 'ingreso']);
+  }
+
+  verReporte(): void {
+    const proceso = this.proceso();
+    if (!proceso) return;
+
+    this.generandoReporte.set(true);
+
+    this.reporteService.obtenerImagenReporte(proceso.id).subscribe({
+      next: (blob) => {
+        this.generandoReporte.set(false);
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        // Revocamos la URL despues de un momento, dandole tiempo a la
+        // nueva pestana de cargar la imagen antes de liberar la memoria.
+        setTimeout(() => URL.revokeObjectURL(url), 30000);
+      },
+      error: () => {
+        this.generandoReporte.set(false);
+        this.snackBar.open('Error al generar el reporte', 'Cerrar', { duration: 4000 });
+      }
+    });
   }
 
   cerrarProceso(): void {

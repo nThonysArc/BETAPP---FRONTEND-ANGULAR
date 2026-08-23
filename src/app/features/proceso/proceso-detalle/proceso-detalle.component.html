@@ -33,6 +33,10 @@
         <mat-icon>scale</mat-icon>
         Ingreso de materia prima
       </button>
+      <button mat-stroked-button (click)="verReporte()" [disabled]="generandoReporte()">
+        <mat-icon>image</mat-icon>
+        Ver reporte
+      </button>
       @if (proceso()!.estado === 'ABIERTO') {
         <button mat-stroked-button color="warn" (click)="cerrarProceso()">
           <mat-icon>lock</mat-icon>
