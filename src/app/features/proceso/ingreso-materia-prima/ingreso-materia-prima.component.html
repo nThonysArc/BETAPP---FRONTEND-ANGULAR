@@ -1,0 +1,90 @@
+<mat-toolbar color="primary">
+  <button mat-icon-button (click)="volver()">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+  <span>Ingreso de materia prima</span>
+</mat-toolbar>
+
+<div class="contenido">
+  <mat-card class="seccion-form">
+    <mat-card-header>
+      <mat-card-title>Actualizar acumulado</mat-card-title>
+      <mat-card-subtitle>
+        Ingresa el TOTAL acumulado hasta el momento reportado por Recepcion (no un incremento).
+      </mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form [formGroup]="form" class="form-grid">
+        <mat-form-field appearance="outline">
+          <mat-label>Variedad</mat-label>
+          <mat-select formControlName="variedadId">
+            @for (v of variedadesDisponibles(); track v.id) {
+              <mat-option [value]="v.id">{{ v.nombre }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Jabas acumuladas</mat-label>
+          <input matInput type="number" formControlName="jabas" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Kilos acumulados</mat-label>
+          <input matInput type="number" step="0.1" formControlName="kilos" />
+        </mat-form-field>
+
+        @if (pesoPromedioPreview !== null) {
+          <p class="preview">
+            Peso promedio por jaba: <strong>{{ pesoPromedioPreview }} kg</strong>
+          </p>
+        }
+
+        <button mat-flat-button color="primary" type="button" [disabled]="guardando()" (click)="guardar()">
+          Guardar
+        </button>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  <h3>Ingreso actual por variedad</h3>
+
+  @if (cargando()) {
+    <p>Cargando...</p>
+  } @else {
+    <table mat-table [dataSource]="ingresos()" class="tabla">
+      <ng-container matColumnDef="variedad">
+        <th mat-header-cell *matHeaderCellDef>Variedad</th>
+        <td mat-cell *matCellDef="let i">{{ i.variedadNombre }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="jabas">
+        <th mat-header-cell *matHeaderCellDef>Jabas</th>
+        <td mat-cell *matCellDef="let i">{{ i.jabas }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="kilos">
+        <th mat-header-cell *matHeaderCellDef>Kilos</th>
+        <td mat-cell *matCellDef="let i">{{ i.kilos }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="pesoPromedio">
+        <th mat-header-cell *matHeaderCellDef>Peso promedio/jaba</th>
+        <td mat-cell *matCellDef="let i">{{ i.pesoPromedioPorJaba ?? '-' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="actualizadoEn">
+        <th mat-header-cell *matHeaderCellDef>Actualizado</th>
+        <td mat-cell *matCellDef="let i">{{ i.actualizadoEn | date: 'short' }}</td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="columnas"></tr>
+      <tr mat-row *matRowDef="let row; columns: columnas;" (click)="editarVariedad(row)" class="fila-clickeable"></tr>
+    </table>
+
+    @if (ingresos().length === 0) {
+      <p class="vacio">Aun no se ha registrado ningun ingreso hoy.</p>
+    }
+  }
+</div>

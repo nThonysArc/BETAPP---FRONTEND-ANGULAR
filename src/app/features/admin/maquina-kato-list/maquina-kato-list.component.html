@@ -1,0 +1,72 @@
+<mat-toolbar color="primary">
+  <button mat-icon-button (click)="volver()">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+  <span>Katos de la maquina</span>
+</mat-toolbar>
+
+<div class="contenido">
+  <div class="acciones-header">
+    <button mat-flat-button color="primary" (click)="abrirNuevoKato()">
+      <mat-icon>add</mat-icon>
+      Nuevo kato
+    </button>
+
+    <mat-slide-toggle
+      [checked]="mostrarInactivos()"
+      (change)="onToggleMostrarInactivos($event.checked)"
+    >
+      Mostrar inactivos
+    </mat-slide-toggle>
+  </div>
+
+  @if (cargando()) {
+    <p>Cargando...</p>
+  } @else {
+    <table mat-table [dataSource]="katos()" class="tabla">
+      <ng-container matColumnDef="nombre">
+        <th mat-header-cell *matHeaderCellDef>Nombre</th>
+        <td mat-cell *matCellDef="let k">{{ k.nombre }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="orden">
+        <th mat-header-cell *matHeaderCellDef>Orden</th>
+        <td mat-cell *matCellDef="let k">{{ k.orden }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="activo">
+        <th mat-header-cell *matHeaderCellDef>Estado</th>
+        <td mat-cell *matCellDef="let k">
+          <mat-chip [color]="k.activo ? 'primary' : undefined" [highlighted]="k.activo">
+            {{ k.activo ? 'Activo' : 'Inactivo' }}
+          </mat-chip>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="acciones">
+        <th mat-header-cell *matHeaderCellDef>Acciones</th>
+        <td mat-cell *matCellDef="let k">
+          <button mat-icon-button (click)="editarKato(k)" title="Editar">
+            <mat-icon>edit</mat-icon>
+          </button>
+          @if (k.activo) {
+            <button mat-icon-button (click)="desactivar(k)" title="Desactivar">
+              <mat-icon>block</mat-icon>
+            </button>
+          } @else {
+            <button mat-icon-button (click)="reactivar(k)" title="Reactivar">
+              <mat-icon>restart_alt</mat-icon>
+            </button>
+          }
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="columnas"></tr>
+      <tr mat-row *matRowDef="let row; columns: columnas;"></tr>
+    </table>
+
+    @if (katos().length === 0) {
+      <p class="vacio">Esta maquina aun no tiene katos registrados.</p>
+    }
+  }
+</div>

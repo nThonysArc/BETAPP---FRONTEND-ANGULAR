@@ -25,11 +25,12 @@ import { AuthService } from '../../core/auth/auth.service';
           <mat-icon>agriculture</mat-icon>
           Administrar Campanas
         </button>
-      </div>
 
-      <p class="nota">
-        Aqui iran mas adelante los accesos al registro de cortes por proceso diario.
-      </p>
+        <button mat-stroked-button (click)="irAVariedades()">
+          <mat-icon>eco</mat-icon>
+          Administrar Variedades
+        </button>
+      </div>
     </div>
   `,
   styles: [`
@@ -37,7 +38,6 @@ import { AuthService } from '../../core/auth/auth.service';
     .usuario { margin-right: 16px; font-size: 0.9rem; }
     .contenido { padding: 24px; }
     .accesos { display: flex; gap: 12px; margin: 16px 0; }
-    .nota { color: rgba(0, 0, 0, 0.6); }
   `]
 })
 export class DashboardComponent {
@@ -51,5 +51,9 @@ export class DashboardComponent {
 
   irACampanas(): void {
     this.router.navigate(['/admin/campanas']);
+  }
+
+  irAVariedades(): void {
+    this.router.navigate(['/admin/variedades']);
   }
 }

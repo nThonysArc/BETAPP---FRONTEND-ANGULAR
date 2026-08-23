@@ -1,0 +1,156 @@
+<mat-toolbar color="primary">
+  <button mat-icon-button (click)="volver()">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+  <span>
+    {{ esEdicion ? 'Editar corte' : 'Nuevo corte' }}
+    @if (numeroCorteSugerido()) { (#{{ numeroCorteSugerido() }}) }
+  </span>
+  <span class="spacer"></span>
+  @if (procesoEstado() === 'CERRADO') {
+    <mat-chip color="warn" [highlighted]="true">Proceso CERRADO</mat-chip>
+  }
+</mat-toolbar>
+
+<div class="contenido">
+  @if (cargandoPlantilla()) {
+    <p>Cargando...</p>
+  } @else {
+    @if (requiereRevision()) {
+      <div class="aviso-revision">
+        <mat-icon>warning</mat-icon>
+        <span>
+          Un corte anterior de este proceso fue editado y pudo afectar el calculo base de este
+          corte. Revisa si los valores siguen siendo correctos.
+        </span>
+      </div>
+    }
+
+    @if (!hayIngresoRegistrado()) {
+      <div class="aviso-sin-ingreso">
+        <mat-icon>info</mat-icon>
+        <span>
+          Aun no se ha registrado el ingreso de materia prima hoy, asi que el peso total
+          no se calcula automaticamente - debes ingresarlo manualmente.
+        </span>
+      </div>
+    }
+
+    <form [formGroup]="form">
+      <mat-card class="seccion">
+        <mat-card-header>
+          <mat-card-title>Horario</mat-card-title>
+        </mat-card-header>
+        <mat-card-content class="fila-horario">
+          <mat-form-field appearance="outline">
+            <mat-label>Desde</mat-label>
+            <input matInput type="time" formControlName="horaInicio" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Hasta</mat-label>
+            <input matInput type="time" formControlName="horaFin" />
+          </mat-form-field>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="seccion">
+        <mat-card-header>
+          <mat-card-title>Detalle por maquina / kato / variedad</mat-card-title>
+          <mat-card-subtitle>
+            Cada fila = una maquina, un kato de esa maquina, y la variedad que proceso.
+          </mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <div formArrayName="detalles">
+            @for (grupo of detalles.controls; track $index; let i = $index) {
+              <div [formGroupName]="i" class="fila-detalle">
+                <mat-form-field appearance="outline" class="campo-maquina">
+                  <mat-label>Maquina</mat-label>
+                  <mat-select formControlName="maquinaId">
+                    @for (m of maquinasDisponibles(); track m.id) {
+                      <mat-option [value]="m.id">{{ m.nombre }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="campo-kato">
+                  <mat-label>Kato</mat-label>
+                  <mat-select formControlName="maquinaKatoId">
+                    @for (k of katosDisponiblesPara(grupo.get('maquinaId')?.value); track k.id) {
+                      <mat-option [value]="k.id">{{ k.nombre }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="campo-variedad">
+                  <mat-label>Variedad</mat-label>
+                  <mat-select formControlName="variedadId">
+                    @for (v of variedadesDisponibles(); track v.id) {
+                      <mat-option [value]="v.id">{{ v.nombre }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="campo-numero">
+                  <mat-label>Jabas</mat-label>
+                  <input matInput type="number" formControlName="jabas" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="campo-numero">
+                  <mat-label>Peso total (kg)</mat-label>
+                  <input matInput type="number" step="0.1" formControlName="pesoTotal" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="campo-numero-chico">
+                  <mat-label>Empacadores</mat-label>
+                  <input matInput type="number" formControlName="empacadores" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="campo-numero">
+                  <mat-label>Kg / empacador</mat-label>
+                  <input matInput type="number" step="0.1" formControlName="kgPorEmpacador" />
+                </mat-form-field>
+
+                <button mat-icon-button type="button" (click)="eliminarDetalle(i)" title="Eliminar fila">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            }
+          </div>
+
+          <button mat-button type="button" (click)="agregarDetalle()">
+            <mat-icon>add</mat-icon>
+            Agregar fila
+          </button>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="seccion">
+        <mat-card-content>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Observacion (opcional)</mat-label>
+            <textarea matInput formControlName="observacion" rows="2"></textarea>
+          </mat-form-field>
+
+          @if (esEdicion) {
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>
+                Motivo del cambio
+                @if (procesoEstado() === 'CERRADO') { (obligatorio: el proceso ya esta cerrado) }
+              </mat-label>
+              <textarea matInput formControlName="motivoAjuste" rows="2"></textarea>
+            </mat-form-field>
+          }
+        </mat-card-content>
+      </mat-card>
+
+      <div class="acciones-finales">
+        <button mat-button type="button" (click)="volver()">Cancelar</button>
+        <button mat-flat-button color="primary" type="button" [disabled]="guardando()" (click)="guardar()">
+          {{ esEdicion ? 'Guardar cambios' : 'Guardar corte' }}
+        </button>
+      </div>
+    </form>
+  }
+</div>

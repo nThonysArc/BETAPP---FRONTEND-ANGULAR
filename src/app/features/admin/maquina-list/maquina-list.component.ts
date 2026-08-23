@@ -97,6 +97,10 @@ export class MaquinaListComponent {
     });
   }
 
+  verKatos(maquina: Maquina): void {
+    this.router.navigate(['/admin/maquinas', maquina.id, 'katos']);
+  }
+
   editarMaquina(maquina: Maquina): void {
     const ref = this.dialog.open(MaquinaFormDialogComponent, {
       width: '420px',

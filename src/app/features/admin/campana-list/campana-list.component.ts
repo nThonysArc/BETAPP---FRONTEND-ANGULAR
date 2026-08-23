@@ -120,6 +120,10 @@ export class CampanaListComponent {
     this.router.navigate(['/admin/campanas', campana.id, 'maquinas']);
   }
 
+  verProcesoDeHoy(campana: Campana): void {
+    this.router.navigate(['/procesos', campana.id]);
+  }
+
   desactivar(campana: Campana): void {
     if (!confirm(`Desactivar la campana "${campana.nombre}"?`)) return;
 

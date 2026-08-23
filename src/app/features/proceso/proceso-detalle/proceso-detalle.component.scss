@@ -1,0 +1,45 @@
+.contenido {
+  padding: 24px;
+}
+
+.sin-proceso {
+  text-align: center;
+  padding: 48px 0;
+}
+
+.header-proceso {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.acciones-header {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.tabla {
+  width: 100%;
+}
+
+.vacio {
+  color: rgba(0, 0, 0, 0.6);
+  margin-top: 16px;
+}
+
+.alerta {
+  color: #b26a00;
+  vertical-align: middle;
+  margin-left: 4px;
+  font-size: 18px;
+}
+
+.fila-clickeable {
+  cursor: pointer;
+}
+
+.fila-clickeable:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
