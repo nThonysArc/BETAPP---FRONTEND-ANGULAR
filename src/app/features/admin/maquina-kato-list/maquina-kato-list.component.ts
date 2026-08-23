@@ -13,6 +13,8 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MaquinaKatoService } from '../../../core/services/maquina-kato.service';
 import { MaquinaKato, MaquinaKatoRequest } from '../../../core/models/maquina-kato.model';
 import { MaquinaKatoFormDialogComponent } from './maquina-kato-form-dialog.component';
+import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-dialog.component';
+import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading-spinner.component';
 
 @Component({
   selector: 'app-maquina-kato-list',
@@ -26,7 +28,8 @@ import { MaquinaKatoFormDialogComponent } from './maquina-kato-form-dialog.compo
     MatChipsModule,
     MatDialogModule,
     MatSnackBarModule,
-    MatSlideToggleModule
+    MatSlideToggleModule,
+    LoadingSpinnerComponent
   ],
   templateUrl: './maquina-kato-list.component.html',
   styleUrl: './maquina-kato-list.component.scss'
@@ -111,16 +114,28 @@ export class MaquinaKatoListComponent {
   }
 
   desactivar(kato: MaquinaKato): void {
-    if (!confirm(`Desactivar el kato "${kato.nombre}"?`)) return;
-
-    this.maquinaKatoService.desactivar(kato.id).subscribe({
-      next: () => {
-        this.snackBar.open('Kato desactivado', 'Cerrar', { duration: 3000 });
-        this.cargarKatos();
-      },
-      error: () => {
-        this.snackBar.open('Error al desactivar el kato', 'Cerrar', { duration: 4000 });
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      width: '360px',
+      data: {
+        titulo: 'Desactivar kato',
+        mensaje: `Desactivar el kato "${kato.nombre}"?`,
+        textoConfirmar: 'Desactivar',
+        color: 'warn'
       }
+    });
+
+    ref.afterClosed().subscribe((confirmado: boolean) => {
+      if (!confirmado) return;
+
+      this.maquinaKatoService.desactivar(kato.id).subscribe({
+        next: () => {
+          this.snackBar.open('Kato desactivado', 'Cerrar', { duration: 3000 });
+          this.cargarKatos();
+        },
+        error: () => {
+          this.snackBar.open('Error al desactivar el kato', 'Cerrar', { duration: 4000 });
+        }
+      });
     });
   }
 

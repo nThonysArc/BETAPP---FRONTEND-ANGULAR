@@ -21,7 +21,7 @@
   </div>
 
   @if (cargando()) {
-    <p>Cargando...</p>
+    <app-loading-spinner mensaje="Cargando katos..." />
   } @else {
     <table mat-table [dataSource]="katos()" class="tabla">
       <ng-container matColumnDef="nombre">

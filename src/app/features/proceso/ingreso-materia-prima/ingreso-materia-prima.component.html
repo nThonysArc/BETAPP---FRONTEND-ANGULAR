@@ -23,16 +23,31 @@
               <mat-option [value]="v.id">{{ v.nombre }}</mat-option>
             }
           </mat-select>
+          @if (form.get('variedadId')?.hasError('required') && form.get('variedadId')?.touched) {
+            <mat-error>Selecciona una variedad</mat-error>
+          }
         </mat-form-field>
 
         <mat-form-field appearance="outline">
           <mat-label>Jabas acumuladas</mat-label>
           <input matInput type="number" formControlName="jabas" />
+          @if (form.get('jabas')?.hasError('required') && form.get('jabas')?.touched) {
+            <mat-error>Este campo es obligatorio</mat-error>
+          }
+          @if (form.get('jabas')?.hasError('min') && form.get('jabas')?.touched) {
+            <mat-error>No puede ser negativo</mat-error>
+          }
         </mat-form-field>
 
         <mat-form-field appearance="outline">
           <mat-label>Kilos acumulados</mat-label>
           <input matInput type="number" step="0.1" formControlName="kilos" />
+          @if (form.get('kilos')?.hasError('required') && form.get('kilos')?.touched) {
+            <mat-error>Este campo es obligatorio</mat-error>
+          }
+          @if (form.get('kilos')?.hasError('min') && form.get('kilos')?.touched) {
+            <mat-error>No puede ser negativo</mat-error>
+          }
         </mat-form-field>
 
         @if (pesoPromedioPreview !== null) {
@@ -42,7 +57,11 @@
         }
 
         <button mat-flat-button color="primary" type="button" [disabled]="guardando()" (click)="guardar()">
-          Guardar
+          @if (guardando()) {
+            <mat-spinner diameter="20" />
+          } @else {
+            Guardar
+          }
         </button>
       </form>
     </mat-card-content>
@@ -51,7 +70,7 @@
   <h3>Ingreso actual por variedad</h3>
 
   @if (cargando()) {
-    <p>Cargando...</p>
+    <app-loading-spinner mensaje="Cargando ingresos..." />
   } @else {
     <table mat-table [dataSource]="ingresos()" class="tabla">
       <ng-container matColumnDef="variedad">

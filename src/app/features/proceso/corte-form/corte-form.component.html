@@ -14,7 +14,7 @@
 
 <div class="contenido">
   @if (cargandoPlantilla()) {
-    <p>Cargando...</p>
+    <app-loading-spinner mensaje="Cargando plantilla del corte anterior..." />
   } @else {
     @if (requiereRevision()) {
       <div class="aviso-revision">
@@ -72,6 +72,9 @@
                       <mat-option [value]="m.id">{{ m.nombre }}</mat-option>
                     }
                   </mat-select>
+                  @if (grupo.get('maquinaId')?.hasError('required') && grupo.get('maquinaId')?.touched) {
+                    <mat-error>Requerido</mat-error>
+                  }
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" class="campo-kato">
@@ -81,6 +84,9 @@
                       <mat-option [value]="k.id">{{ k.nombre }}</mat-option>
                     }
                   </mat-select>
+                  @if (grupo.get('maquinaKatoId')?.hasError('required') && grupo.get('maquinaKatoId')?.touched) {
+                    <mat-error>Requerido</mat-error>
+                  }
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" class="campo-variedad">
@@ -90,26 +96,41 @@
                       <mat-option [value]="v.id">{{ v.nombre }}</mat-option>
                     }
                   </mat-select>
+                  @if (grupo.get('variedadId')?.hasError('required') && grupo.get('variedadId')?.touched) {
+                    <mat-error>Requerido</mat-error>
+                  }
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" class="campo-numero">
                   <mat-label>Jabas</mat-label>
                   <input matInput type="number" formControlName="jabas" />
+                  @if (grupo.get('jabas')?.hasError('min') && grupo.get('jabas')?.touched) {
+                    <mat-error>No puede ser negativo</mat-error>
+                  }
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" class="campo-numero">
                   <mat-label>Peso total (kg)</mat-label>
                   <input matInput type="number" step="0.1" formControlName="pesoTotal" />
+                  @if (grupo.get('pesoTotal')?.hasError('min') && grupo.get('pesoTotal')?.touched) {
+                    <mat-error>No puede ser negativo</mat-error>
+                  }
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" class="campo-numero-chico">
                   <mat-label>Empacadores</mat-label>
                   <input matInput type="number" formControlName="empacadores" />
+                  @if (grupo.get('empacadores')?.hasError('min') && grupo.get('empacadores')?.touched) {
+                    <mat-error>No puede ser negativo</mat-error>
+                  }
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" class="campo-numero">
                   <mat-label>Kg / empacador</mat-label>
                   <input matInput type="number" step="0.1" formControlName="kgPorEmpacador" />
+                  @if (grupo.get('kgPorEmpacador')?.hasError('min') && grupo.get('kgPorEmpacador')?.touched) {
+                    <mat-error>No puede ser negativo</mat-error>
+                  }
                 </mat-form-field>
 
                 <button mat-icon-button type="button" (click)="eliminarDetalle(i)" title="Eliminar fila">
@@ -148,7 +169,11 @@
       <div class="acciones-finales">
         <button mat-button type="button" (click)="volver()">Cancelar</button>
         <button mat-flat-button color="primary" type="button" [disabled]="guardando()" (click)="guardar()">
-          {{ esEdicion ? 'Guardar cambios' : 'Guardar corte' }}
+          @if (guardando()) {
+            <mat-spinner diameter="20" />
+          } @else {
+            {{ esEdicion ? 'Guardar cambios' : 'Guardar corte' }}
+          }
         </button>
       </div>
     </form>

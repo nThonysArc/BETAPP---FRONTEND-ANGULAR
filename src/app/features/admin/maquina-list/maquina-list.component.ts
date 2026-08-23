@@ -14,6 +14,8 @@ import { MaquinaService } from '../../../core/services/maquina.service';
 import { CampanaService } from '../../../core/services/campana.service';
 import { Maquina, MaquinaRequest } from '../../../core/models/maquina.model';
 import { MaquinaFormDialogComponent } from './maquina-form-dialog.component';
+import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-dialog.component';
+import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading-spinner.component';
 
 @Component({
   selector: 'app-maquina-list',
@@ -27,7 +29,8 @@ import { MaquinaFormDialogComponent } from './maquina-form-dialog.component';
     MatDialogModule,
     MatSnackBarModule,
     MatToolbarModule,
-    MatSlideToggleModule
+    MatSlideToggleModule,
+    LoadingSpinnerComponent
   ],
   templateUrl: './maquina-list.component.html',
   styleUrl: './maquina-list.component.scss'
@@ -123,16 +126,28 @@ export class MaquinaListComponent {
   }
 
   desactivar(maquina: Maquina): void {
-    if (!confirm(`Desactivar la maquina "${maquina.nombre}"?`)) return;
-
-    this.maquinaService.desactivar(maquina.id).subscribe({
-      next: () => {
-        this.snackBar.open('Maquina desactivada', 'Cerrar', { duration: 3000 });
-        this.cargarDatos();
-      },
-      error: () => {
-        this.snackBar.open('Error al desactivar la maquina', 'Cerrar', { duration: 4000 });
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      width: '360px',
+      data: {
+        titulo: 'Desactivar maquina',
+        mensaje: `Desactivar la maquina "${maquina.nombre}"?`,
+        textoConfirmar: 'Desactivar',
+        color: 'warn'
       }
+    });
+
+    ref.afterClosed().subscribe((confirmado: boolean) => {
+      if (!confirmado) return;
+
+      this.maquinaService.desactivar(maquina.id).subscribe({
+        next: () => {
+          this.snackBar.open('Maquina desactivada', 'Cerrar', { duration: 3000 });
+          this.cargarDatos();
+        },
+        error: () => {
+          this.snackBar.open('Error al desactivar la maquina', 'Cerrar', { duration: 4000 });
+        }
+      });
     });
   }
 

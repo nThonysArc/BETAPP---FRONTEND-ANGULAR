@@ -20,7 +20,21 @@
 
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Contrasena</mat-label>
-          <input matInput type="password" formControlName="password" autocomplete="current-password" />
+          <input
+            matInput
+            [type]="mostrarPassword() ? 'text' : 'password'"
+            formControlName="password"
+            autocomplete="current-password"
+          />
+          <button
+            mat-icon-button
+            matSuffix
+            type="button"
+            (click)="togglePassword()"
+            [attr.aria-label]="mostrarPassword() ? 'Ocultar contrasena' : 'Mostrar contrasena'"
+          >
+            <mat-icon>{{ mostrarPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
           @if (form.get('password')?.hasError('required') && form.get('password')?.touched) {
             <mat-error>La contrasena es obligatoria</mat-error>
           }

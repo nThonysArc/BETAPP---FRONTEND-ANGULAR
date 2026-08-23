@@ -11,6 +11,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { MatCardModule } from '@angular/material/card';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { IngresoMateriaPrimaService } from '../../../core/services/ingreso-materia-prima.service';
 import { ProcesoDiarioService } from '../../../core/services/proceso-diario.service';
@@ -18,6 +19,7 @@ import { CampanaService } from '../../../core/services/campana.service';
 import { VariedadService } from '../../../core/services/variedad.service';
 import { IngresoMateriaPrima } from '../../../core/models/ingreso-materia-prima.model';
 import { Variedad } from '../../../core/models/variedad.model';
+import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading-spinner.component';
 
 @Component({
   selector: 'app-ingreso-materia-prima',
@@ -33,7 +35,9 @@ import { Variedad } from '../../../core/models/variedad.model';
     MatSelectModule,
     MatTableModule,
     MatCardModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatProgressSpinnerModule,
+    LoadingSpinnerComponent
   ],
   templateUrl: './ingreso-materia-prima.component.html',
   styleUrl: './ingreso-materia-prima.component.scss'

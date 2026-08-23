@@ -6,6 +6,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { HttpErrorResponse } from '@angular/common/http';
 
@@ -22,28 +23,29 @@ import { ErrorResponse } from '../../core/models/error-response.model';
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
+    MatIconModule,
     MatProgressSpinnerModule
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss'
 })
 export class LoginComponent {
-  // inject() se resuelve de inmediato al declarar el campo (a diferencia de
-  // la inyeccion por parametro de constructor, que se asigna DESPUES de que
-  // los inicializadores de campo de la clase ya corrieron). Por eso "form"
-  // puede usar "fb" con seguridad aqui, sin el error de "used before
-  // initialization".
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
   readonly cargando = signal(false);
   readonly errorMensaje = signal<string | null>(null);
+  readonly mostrarPassword = signal(false);
 
   readonly form = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required]]
   });
+
+  togglePassword(): void {
+    this.mostrarPassword.update((v) => !v);
+  }
 
   onSubmit(): void {
     if (this.form.invalid) {

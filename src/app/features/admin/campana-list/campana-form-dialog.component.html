@@ -9,16 +9,25 @@
           <mat-option [value]="producto.id">{{ producto.nombre }}</mat-option>
         }
       </mat-select>
+      @if (form.get('productoId')?.hasError('required') && form.get('productoId')?.touched) {
+        <mat-error>Selecciona un producto</mat-error>
+      }
     </mat-form-field>
 
     <mat-form-field appearance="outline">
       <mat-label>Nombre</mat-label>
       <input matInput formControlName="nombre" placeholder="Ej: Arandanos 2026" />
+      @if (form.get('nombre')?.hasError('required') && form.get('nombre')?.touched) {
+        <mat-error>El nombre es obligatorio</mat-error>
+      }
     </mat-form-field>
 
     <mat-form-field appearance="outline">
       <mat-label>Anio</mat-label>
       <input matInput type="number" formControlName="anio" />
+      @if (form.get('anio')?.hasError('required') && form.get('anio')?.touched) {
+        <mat-error>El anio es obligatorio</mat-error>
+      }
     </mat-form-field>
 
     <mat-form-field appearance="outline">
@@ -26,6 +35,9 @@
       <input matInput [matDatepicker]="pickerInicio" formControlName="fechaInicio" />
       <mat-datepicker-toggle matSuffix [for]="pickerInicio" />
       <mat-datepicker #pickerInicio />
+      @if (form.get('fechaInicio')?.hasError('required') && form.get('fechaInicio')?.touched) {
+        <mat-error>La fecha de inicio es obligatoria</mat-error>
+      }
     </mat-form-field>
 
     <mat-form-field appearance="outline">

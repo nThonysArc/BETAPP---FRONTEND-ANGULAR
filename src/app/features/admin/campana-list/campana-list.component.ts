@@ -16,6 +16,8 @@ import { ProductoService } from '../../../core/services/producto.service';
 import { Campana, CampanaRequest } from '../../../core/models/campana.model';
 import { Producto } from '../../../core/models/producto.model';
 import { CampanaFormDialogComponent } from './campana-form-dialog.component';
+import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-dialog.component';
+import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading-spinner.component';
 
 @Component({
   selector: 'app-campana-list',
@@ -29,7 +31,8 @@ import { CampanaFormDialogComponent } from './campana-form-dialog.component';
     MatDialogModule,
     MatSnackBarModule,
     MatToolbarModule,
-    MatSlideToggleModule
+    MatSlideToggleModule,
+    LoadingSpinnerComponent
   ],
   templateUrl: './campana-list.component.html',
   styleUrl: './campana-list.component.scss'
@@ -125,16 +128,28 @@ export class CampanaListComponent {
   }
 
   desactivar(campana: Campana): void {
-    if (!confirm(`Desactivar la campana "${campana.nombre}"?`)) return;
-
-    this.campanaService.desactivar(campana.id).subscribe({
-      next: () => {
-        this.snackBar.open('Campana desactivada', 'Cerrar', { duration: 3000 });
-        this.cargarDatos();
-      },
-      error: () => {
-        this.snackBar.open('Error al desactivar la campana', 'Cerrar', { duration: 4000 });
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      width: '360px',
+      data: {
+        titulo: 'Desactivar campana',
+        mensaje: `Desactivar la campana "${campana.nombre}"?`,
+        textoConfirmar: 'Desactivar',
+        color: 'warn'
       }
+    });
+
+    ref.afterClosed().subscribe((confirmado: boolean) => {
+      if (!confirmado) return;
+
+      this.campanaService.desactivar(campana.id).subscribe({
+        next: () => {
+          this.snackBar.open('Campana desactivada', 'Cerrar', { duration: 3000 });
+          this.cargarDatos();
+        },
+        error: () => {
+          this.snackBar.open('Error al desactivar la campana', 'Cerrar', { duration: 4000 });
+        }
+      });
     });
   }
 

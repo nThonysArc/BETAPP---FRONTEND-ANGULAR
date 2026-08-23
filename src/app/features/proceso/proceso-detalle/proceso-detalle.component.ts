@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { HttpErrorResponse } from '@angular/common/http';
 
 import { ProcesoDiarioService } from '../../../core/services/proceso-diario.service';
@@ -14,6 +15,8 @@ import { CorteService } from '../../../core/services/corte.service';
 import { ProcesoDiario } from '../../../core/models/proceso-diario.model';
 import { Corte } from '../../../core/models/corte.model';
 import { toIsoDateString } from '../../../core/utils/date.util';
+import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-dialog.component';
+import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading-spinner.component';
 
 @Component({
   selector: 'app-proceso-detalle',
@@ -25,7 +28,9 @@ import { toIsoDateString } from '../../../core/utils/date.util';
     MatIconModule,
     MatTableModule,
     MatChipsModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatDialogModule,
+    LoadingSpinnerComponent
   ],
   templateUrl: './proceso-detalle.component.html',
   styleUrl: './proceso-detalle.component.scss'
@@ -34,6 +39,7 @@ export class ProcesoDetalleComponent {
   private readonly procesoDiarioService = inject(ProcesoDiarioService);
   private readonly corteService = inject(CorteService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -118,18 +124,28 @@ export class ProcesoDetalleComponent {
     const proceso = this.proceso();
     if (!proceso) return;
 
-    if (!confirm('Cerrar el proceso del dia? Despues de cerrarlo, editar cualquier corte exigira indicar un motivo.')) {
-      return;
-    }
-
-    this.procesoDiarioService.cerrar(proceso.id).subscribe({
-      next: (actualizado) => {
-        this.proceso.set(actualizado);
-        this.snackBar.open('Proceso cerrado', 'Cerrar', { duration: 3000 });
-      },
-      error: (err) => {
-        this.snackBar.open(err.error?.message ?? 'Error al cerrar el proceso', 'Cerrar', { duration: 4000 });
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      width: '420px',
+      data: {
+        titulo: 'Cerrar proceso del dia',
+        mensaje: 'Despues de cerrarlo, editar cualquier corte de este proceso exigira indicar un motivo. Deseas continuar?',
+        textoConfirmar: 'Cerrar proceso',
+        color: 'warn'
       }
+    });
+
+    ref.afterClosed().subscribe((confirmado: boolean) => {
+      if (!confirmado) return;
+
+      this.procesoDiarioService.cerrar(proceso.id).subscribe({
+        next: (actualizado) => {
+          this.proceso.set(actualizado);
+          this.snackBar.open('Proceso cerrado', 'Cerrar', { duration: 3000 });
+        },
+        error: (err) => {
+          this.snackBar.open(err.error?.message ?? 'Error al cerrar el proceso', 'Cerrar', { duration: 4000 });
+        }
+      });
     });
   }
 

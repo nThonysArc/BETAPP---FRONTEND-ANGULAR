@@ -11,6 +11,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
@@ -25,6 +26,7 @@ import { CorteRequest } from '../../../core/models/corte.model';
 import { Maquina } from '../../../core/models/maquina.model';
 import { MaquinaKato } from '../../../core/models/maquina-kato.model';
 import { Variedad } from '../../../core/models/variedad.model';
+import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading-spinner.component';
 
 @Component({
   selector: 'app-corte-form',
@@ -40,7 +42,9 @@ import { Variedad } from '../../../core/models/variedad.model';
     MatSelectModule,
     MatSnackBarModule,
     MatCardModule,
-    MatChipsModule
+    MatChipsModule,
+    MatProgressSpinnerModule,
+    LoadingSpinnerComponent
   ],
   templateUrl: './corte-form.component.html',
   styleUrl: './corte-form.component.scss'

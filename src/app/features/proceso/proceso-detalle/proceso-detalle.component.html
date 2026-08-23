@@ -7,7 +7,7 @@
 
 <div class="contenido">
   @if (buscandoProceso()) {
-    <p>Buscando proceso del dia...</p>
+    <app-loading-spinner mensaje="Buscando proceso del dia..." />
   } @else if (!proceso()) {
     <div class="sin-proceso">
       <p>Todavia no se ha abierto el proceso de hoy para esta campana.</p>
@@ -42,7 +42,7 @@
     </div>
 
     @if (cargando()) {
-      <p>Cargando cortes...</p>
+      <app-loading-spinner mensaje="Cargando cortes..." />
     } @else {
       <table mat-table [dataSource]="cortes()" class="tabla">
         <ng-container matColumnDef="numeroCorte">

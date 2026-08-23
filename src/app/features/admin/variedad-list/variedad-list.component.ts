@@ -18,6 +18,8 @@ import { ProductoService } from '../../../core/services/producto.service';
 import { Variedad, VariedadRequest } from '../../../core/models/variedad.model';
 import { Producto } from '../../../core/models/producto.model';
 import { VariedadFormDialogComponent } from './variedad-form-dialog.component';
+import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-dialog.component';
+import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading-spinner.component';
 
 @Component({
   selector: 'app-variedad-list',
@@ -34,7 +36,8 @@ import { VariedadFormDialogComponent } from './variedad-form-dialog.component';
     MatFormFieldModule,
     MatDialogModule,
     MatSnackBarModule,
-    MatSlideToggleModule
+    MatSlideToggleModule,
+    LoadingSpinnerComponent
   ],
   templateUrl: './variedad-list.component.html',
   styleUrl: './variedad-list.component.scss'
@@ -145,16 +148,28 @@ export class VariedadListComponent {
   }
 
   desactivar(variedad: Variedad): void {
-    if (!confirm(`Desactivar la variedad "${variedad.nombre}"?`)) return;
-
-    this.variedadService.desactivar(variedad.id).subscribe({
-      next: () => {
-        this.snackBar.open('Variedad desactivada', 'Cerrar', { duration: 3000 });
-        this.cargarVariedades();
-      },
-      error: () => {
-        this.snackBar.open('Error al desactivar la variedad', 'Cerrar', { duration: 4000 });
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      width: '360px',
+      data: {
+        titulo: 'Desactivar variedad',
+        mensaje: `Desactivar la variedad "${variedad.nombre}"?`,
+        textoConfirmar: 'Desactivar',
+        color: 'warn'
       }
+    });
+
+    ref.afterClosed().subscribe((confirmado: boolean) => {
+      if (!confirmado) return;
+
+      this.variedadService.desactivar(variedad.id).subscribe({
+        next: () => {
+          this.snackBar.open('Variedad desactivada', 'Cerrar', { duration: 3000 });
+          this.cargarVariedades();
+        },
+        error: () => {
+          this.snackBar.open('Error al desactivar la variedad', 'Cerrar', { duration: 4000 });
+        }
+      });
     });
   }
 
