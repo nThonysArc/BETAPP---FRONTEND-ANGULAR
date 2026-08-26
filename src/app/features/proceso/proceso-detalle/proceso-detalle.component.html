@@ -7,8 +7,8 @@
 
 <div class="contenido">
   @if (buscandoProceso()) {
-    <app-loading-spinner mensaje="Buscando proceso del dia..." />
-  } @else if (!proceso()) {
+    <app-loading-spinner mensaje="Buscando proceso..." />
+  } @else if (!proceso() && !esModoDirecto) {
     <div class="sin-proceso">
       <p>Todavia no se ha abierto el proceso de hoy para esta campana.</p>
       <button mat-flat-button color="primary" (click)="abrirProcesoDeHoy()">
@@ -16,6 +16,8 @@
         Abrir proceso de hoy
       </button>
     </div>
+  } @else if (!proceso()) {
+    <p class="vacio">No se pudo cargar este proceso.</p>
   } @else {
     <div class="header-proceso">
       <h2>{{ proceso()!.campanaNombre }} - {{ proceso()!.fecha }}</h2>
@@ -41,6 +43,11 @@
         <button mat-stroked-button color="warn" (click)="cerrarProceso()">
           <mat-icon>lock</mat-icon>
           Cerrar proceso
+        </button>
+      } @else {
+        <button mat-stroked-button (click)="reabrirProceso()">
+          <mat-icon>lock_open</mat-icon>
+          Reabrir proceso
         </button>
       }
     </div>
@@ -88,7 +95,7 @@
       </table>
 
       @if (cortes().length === 0) {
-        <p class="vacio">Aun no hay cortes registrados hoy.</p>
+        <p class="vacio">Aun no hay cortes registrados en este proceso.</p>
       }
     }
   }

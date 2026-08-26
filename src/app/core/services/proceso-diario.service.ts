@@ -9,6 +9,10 @@ export class ProcesoDiarioService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiUrl}/procesos`;
 
+  listarPorCampana(campanaId: number): Observable<ProcesoDiario[]> {
+    return this.http.get<ProcesoDiario[]>(this.baseUrl, { params: { campanaId } });
+  }
+
   obtener(id: number): Observable<ProcesoDiario> {
     return this.http.get<ProcesoDiario>(`${this.baseUrl}/${id}`);
   }
@@ -23,5 +27,9 @@ export class ProcesoDiarioService {
 
   cerrar(id: number): Observable<ProcesoDiario> {
     return this.http.post<ProcesoDiario>(`${this.baseUrl}/${id}/cerrar`, {});
+  }
+
+  reabrir(id: number): Observable<ProcesoDiario> {
+    return this.http.post<ProcesoDiario>(`${this.baseUrl}/${id}/reabrir`, {});
   }
 }

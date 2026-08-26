@@ -46,6 +46,20 @@ export const routes: Routes = [
       import('./features/proceso/proceso-detalle/proceso-detalle.component').then((m) => m.ProcesoDetalleComponent)
   },
   {
+    path: 'procesos/historial/:campanaId',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/proceso/proceso-historial/proceso-historial.component').then(
+        (m) => m.ProcesoHistorialComponent
+      )
+  },
+  {
+    path: 'procesos/detalle/:procesoId',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/proceso/proceso-detalle/proceso-detalle.component').then((m) => m.ProcesoDetalleComponent)
+  },
+  {
     path: 'procesos/:procesoId/ingreso',
     canActivate: [authGuard],
     loadComponent: () =>

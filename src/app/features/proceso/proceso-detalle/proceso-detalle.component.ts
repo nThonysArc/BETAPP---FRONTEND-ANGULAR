@@ -12,12 +12,12 @@ import { HttpErrorResponse } from '@angular/common/http';
 
 import { ProcesoDiarioService } from '../../../core/services/proceso-diario.service';
 import { CorteService } from '../../../core/services/corte.service';
+import { ReporteService } from '../../../core/services/reporte.service';
 import { ProcesoDiario } from '../../../core/models/proceso-diario.model';
 import { Corte } from '../../../core/models/corte.model';
 import { toIsoDateString } from '../../../core/utils/date.util';
 import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading-spinner.component';
-import { ReporteService } from '../../../core/services/reporte.service';
 
 @Component({
   selector: 'app-proceso-detalle',
@@ -45,25 +45,56 @@ export class ProcesoDetalleComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
-  readonly generandoReporte = signal(false);
-
   readonly columnas = ['numeroCorte', 'horaInicio', 'horaFin', 'jabas', 'peso', 'acciones'];
-  readonly campanaId = Number(this.route.snapshot.paramMap.get('campanaId'));
+
+  /**
+   * Dos formas de llegar a esta pantalla:
+   * - '/procesos/:campanaId' -> atajo "proceso de hoy" (busca o permite abrir)
+   * - '/procesos/detalle/:procesoId' -> acceso directo a un proceso especifico
+   *   (desde el historial), sin importar la fecha ni si esta abierto o cerrado.
+   */
+  private readonly procesoIdDirecto = this.route.snapshot.paramMap.get('procesoId');
+  private readonly campanaIdParam = this.route.snapshot.paramMap.get('campanaId');
+  readonly esModoDirecto = this.procesoIdDirecto !== null;
+  readonly campanaId = this.campanaIdParam !== null ? Number(this.campanaIdParam) : null;
+
   readonly proceso = signal<ProcesoDiario | null>(null);
   readonly cortes = signal<Corte[]>([]);
   readonly cargando = signal(true);
   readonly buscandoProceso = signal(true);
+  readonly generandoReporte = signal(false);
 
   private readonly fechaHoy = toIsoDateString(new Date());
 
   constructor() {
-    this.buscarProcesoDeHoy();
+    if (this.esModoDirecto) {
+      this.cargarProcesoDirecto(Number(this.procesoIdDirecto));
+    } else {
+      this.buscarProcesoDeHoy();
+    }
+  }
+
+  private cargarProcesoDirecto(procesoId: number): void {
+    this.buscandoProceso.set(true);
+
+    this.procesoDiarioService.obtener(procesoId).subscribe({
+      next: (proceso) => {
+        this.proceso.set(proceso);
+        this.buscandoProceso.set(false);
+        this.cargarCortes(proceso.id);
+      },
+      error: () => {
+        this.buscandoProceso.set(false);
+        this.cargando.set(false);
+        this.snackBar.open('No se pudo cargar el proceso', 'Cerrar', { duration: 4000 });
+      }
+    });
   }
 
   private buscarProcesoDeHoy(): void {
     this.buscandoProceso.set(true);
 
-    this.procesoDiarioService.buscarPorCampanaYFecha(this.campanaId, this.fechaHoy).subscribe({
+    this.procesoDiarioService.buscarPorCampanaYFecha(this.campanaId!, this.fechaHoy).subscribe({
       next: (proceso) => {
         this.proceso.set(proceso);
         this.buscandoProceso.set(false);
@@ -81,7 +112,7 @@ export class ProcesoDetalleComponent {
   }
 
   abrirProcesoDeHoy(): void {
-    this.procesoDiarioService.crear({ campanaId: this.campanaId, fecha: this.fechaHoy }).subscribe({
+    this.procesoDiarioService.crear({ campanaId: this.campanaId!, fecha: this.fechaHoy }).subscribe({
       next: (proceso) => {
         this.proceso.set(proceso);
         this.cargarCortes(proceso.id);
@@ -135,8 +166,6 @@ export class ProcesoDetalleComponent {
         this.generandoReporte.set(false);
         const url = URL.createObjectURL(blob);
         window.open(url, '_blank');
-        // Revocamos la URL despues de un momento, dandole tiempo a la
-        // nueva pestana de cargar la imagen antes de liberar la memoria.
         setTimeout(() => URL.revokeObjectURL(url), 30000);
       },
       error: () => {
@@ -175,7 +204,40 @@ export class ProcesoDetalleComponent {
     });
   }
 
+  reabrirProceso(): void {
+    const proceso = this.proceso();
+    if (!proceso) return;
+
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      width: '420px',
+      data: {
+        titulo: 'Reabrir proceso del dia',
+        mensaje: 'Esto permite volver a agregar cortes nuevos a este dia. Deseas continuar?',
+        textoConfirmar: 'Reabrir'
+      }
+    });
+
+    ref.afterClosed().subscribe((confirmado: boolean) => {
+      if (!confirmado) return;
+
+      this.procesoDiarioService.reabrir(proceso.id).subscribe({
+        next: (actualizado) => {
+          this.proceso.set(actualizado);
+          this.snackBar.open('Proceso reabierto', 'Cerrar', { duration: 3000 });
+        },
+        error: (err) => {
+          this.snackBar.open(err.error?.message ?? 'Error al reabrir el proceso', 'Cerrar', { duration: 4000 });
+        }
+      });
+    });
+  }
+
   volver(): void {
-    this.router.navigate(['/admin/campanas']);
+    const proceso = this.proceso();
+    if (this.esModoDirecto && proceso) {
+      this.router.navigate(['/procesos/historial', proceso.campanaId]);
+    } else {
+      this.router.navigate(['/admin/campanas']);
+    }
   }
 }

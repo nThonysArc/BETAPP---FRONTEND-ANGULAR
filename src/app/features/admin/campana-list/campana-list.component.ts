@@ -127,6 +127,10 @@ export class CampanaListComponent {
     this.router.navigate(['/procesos', campana.id]);
   }
 
+  verHistorial(campana: Campana): void {
+    this.router.navigate(['/procesos/historial', campana.id]);
+  }
+
   desactivar(campana: Campana): void {
     const ref = this.dialog.open(ConfirmDialogComponent, {
       width: '360px',

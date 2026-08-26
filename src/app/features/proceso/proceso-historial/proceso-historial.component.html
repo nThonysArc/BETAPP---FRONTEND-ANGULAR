@@ -1,0 +1,44 @@
+<mat-toolbar color="primary">
+  <button mat-icon-button (click)="volver()">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+  <span>Historial de procesos - {{ nombreCampana() }}</span>
+</mat-toolbar>
+
+<div class="contenido">
+  @if (cargando()) {
+    <app-loading-spinner mensaje="Cargando historial..." />
+  } @else {
+    <table mat-table [dataSource]="procesos()" class="tabla">
+      <ng-container matColumnDef="fecha">
+        <th mat-header-cell *matHeaderCellDef>Fecha</th>
+        <td mat-cell *matCellDef="let p">{{ p.fecha }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="estado">
+        <th mat-header-cell *matHeaderCellDef>Estado</th>
+        <td mat-cell *matCellDef="let p">
+          <mat-chip [color]="p.estado === 'ABIERTO' ? 'primary' : undefined" [highlighted]="p.estado === 'ABIERTO'">
+            {{ p.estado }}
+          </mat-chip>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="acciones">
+        <th mat-header-cell *matHeaderCellDef></th>
+        <td mat-cell *matCellDef="let p">
+          <button mat-icon-button (click)="verProceso(p)" title="Ver / Editar">
+            <mat-icon>visibility</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="columnas"></tr>
+      <tr mat-row *matRowDef="let row; columns: columnas;" (click)="verProceso(row)" class="fila-clickeable"></tr>
+    </table>
+
+    @if (procesos().length === 0) {
+      <p class="vacio">Esta campana aun no tiene procesos registrados.</p>
+    }
+  }
+</div>
