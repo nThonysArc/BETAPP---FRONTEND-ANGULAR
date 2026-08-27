@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
@@ -18,6 +18,7 @@ import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading
   standalone: true,
   imports: [
     CommonModule,
+    DatePipe,
     MatToolbarModule,
     MatButtonModule,
     MatIconModule,
@@ -36,7 +37,7 @@ export class ProcesoHistorialComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
-  readonly columnas = ['fecha', 'estado', 'acciones'];
+  readonly columnas = ['fecha', 'estado', 'totalCortes', 'acciones'];
   readonly campanaId = Number(this.route.snapshot.paramMap.get('campanaId'));
   readonly nombreCampana = signal<string>('');
   readonly procesos = signal<ProcesoDiario[]>([]);
