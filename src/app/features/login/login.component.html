@@ -1,4 +1,5 @@
 <div class="login-container">
+  <app-theme-toggle class="tema-toggle" />
   <mat-card class="login-card">
     <mat-card-header>
       <mat-card-title>Avance de Produccion</mat-card-title>
@@ -20,14 +21,31 @@
 
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Contrasena</mat-label>
-          <input matInput type="password" formControlName="password" autocomplete="current-password" />
+          <input
+            matInput
+            [type]="mostrarPassword() ? 'text' : 'password'"
+            formControlName="password"
+            autocomplete="current-password"
+          />
+          <button
+            mat-icon-button
+            matSuffix
+            type="button"
+            (click)="togglePassword()"
+            [attr.aria-label]="mostrarPassword() ? 'Ocultar contrasena' : 'Mostrar contrasena'"
+          >
+            <mat-icon>{{ mostrarPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
           @if (form.get('password')?.hasError('required') && form.get('password')?.touched) {
             <mat-error>La contrasena es obligatoria</mat-error>
           }
         </mat-form-field>
 
         @if (errorMensaje()) {
-          <p class="error-message">{{ errorMensaje() }}</p>
+          <p class="error-message" role="alert">
+            <mat-icon>error</mat-icon>
+            <span>{{ errorMensaje() }}</span>
+          </p>
         }
 
         <button

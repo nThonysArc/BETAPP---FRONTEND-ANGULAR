@@ -1,15 +1,27 @@
 <!doctype html>
-<html lang="en">
+<html lang="es" data-theme="light">
 <head>
   <meta charset="utf-8">
-  <title>AvanceProduccionFrontend</title>
+  <title>BetaApp</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1d6a38">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:wght@400;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <script>
+    // Aplica el tema guardado antes de pintar para evitar el parpadeo.
+    try {
+      var t = localStorage.getItem('beta-theme');
+      if (t === 'light' || t === 'dark' || t === 'planta') {
+        document.documentElement.setAttribute('data-theme', t);
+      }
+    } catch (e) {}
+  </script>
 </head>
-<body class="mat-typography">
+<body>
   <app-root></app-root>
 </body>
 </html>

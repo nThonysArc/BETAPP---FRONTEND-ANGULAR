@@ -1,0 +1,110 @@
+// BetaApp — puente entre los tokens de diseño y Angular Material (>= 19.2).
+// Los tokens viven en beta-tokens.css; aquí solo se mapean a las variables
+// --mat-sys-* para que todos los componentes de Material los hereden.
+
+:root,
+[data-theme] {
+  --mat-sys-primary: var(--brand);
+  --mat-sys-on-primary: var(--on-brand);
+  --mat-sys-primary-container: var(--brand-soft);
+  --mat-sys-on-primary-container: var(--on-brand-soft);
+
+  --mat-sys-secondary: var(--accent);
+  --mat-sys-on-secondary: var(--on-accent);
+  --mat-sys-secondary-container: var(--accent-soft);
+  --mat-sys-on-secondary-container: var(--on-accent-soft);
+
+  --mat-sys-tertiary: var(--accent);
+  --mat-sys-on-tertiary: var(--on-accent);
+  --mat-sys-tertiary-container: var(--accent-soft);
+  --mat-sys-on-tertiary-container: var(--on-accent-soft);
+
+  --mat-sys-error: var(--danger);
+  --mat-sys-on-error: var(--on-danger);
+  --mat-sys-error-container: var(--danger-soft);
+  --mat-sys-on-error-container: var(--on-danger-soft);
+
+  --mat-sys-background: var(--surface);
+  --mat-sys-on-background: var(--ink);
+  --mat-sys-surface: var(--surface);
+  --mat-sys-on-surface: var(--ink);
+  --mat-sys-surface-variant: var(--surface-sunken);
+  --mat-sys-on-surface-variant: var(--ink-muted);
+  --mat-sys-surface-container-lowest: var(--surface-raised);
+  --mat-sys-surface-container-low: var(--surface-raised);
+  --mat-sys-surface-container: var(--surface-raised);
+  --mat-sys-surface-container-high: var(--surface-sunken);
+  --mat-sys-surface-container-highest: var(--surface-sunken);
+
+  --mat-sys-outline: var(--border);
+  --mat-sys-outline-variant: var(--hairline);
+}
+
+// Esquema de color del navegador (barras de scroll, controles nativos)
+:root,
+[data-theme='light'],
+[data-theme='planta'] {
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+// Objetivos táctiles: 48px (56px en el tema Planta)
+html {
+  --mdc-filled-button-container-height: var(--touch-min);
+  --mdc-outlined-button-container-height: var(--touch-min);
+  --mdc-text-button-container-height: var(--touch-min);
+  --mdc-protected-button-container-height: var(--touch-min);
+}
+
+html[data-theme='planta'] {
+  --mdc-filled-button-container-height: var(--touch-planta);
+  --mdc-outlined-button-container-height: var(--touch-planta);
+  --mdc-text-button-container-height: var(--touch-planta);
+  --mdc-protected-button-container-height: var(--touch-planta);
+}
+
+// Base
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 1.125rem; // body-lg en celular
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (min-width: 840px) {
+  body {
+    font-size: 1rem; // body en escritorio
+    line-height: 1.5;
+  }
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+// Cifras del corte: fuente de datos con números tabulares
+.cifra {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

@@ -15,7 +15,7 @@
 }
 
 .preview {
-  color: #1a5c2e;
+  color: var(--brand);
   font-size: 0.95rem;
 }
 
@@ -28,10 +28,10 @@
 }
 
 .fila-clickeable:hover {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: var(--surface-sunken);
 }
 
 .vacio {
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--ink-muted);
   margin-top: 16px;
 }

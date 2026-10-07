@@ -1,19 +1,25 @@
-
-// Custom Theming for Angular Material
-// For more information: https://material.angular.dev/guide/theming
+// Estilos globales de BetaApp.
+// Los tokens (colores, espaciado, fuentes) se cargan antes desde
+// src/styles/beta-tokens.css (ver "styles" en angular.json).
 @use '@angular/material' as mat;
+@use './styles/beta-material';
 
 html {
-  @include mat.theme((
-    color: (
-      theme-type: light,
-      primary: mat.$azure-palette,
-      tertiary: mat.$blue-palette,
-    ),
-    typography: Roboto,
-    density: 0,
-  ));
-}/* You can add global styles to this file, and also import other style files */
-
-html, body { height: 100%; }
-body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+  @include mat.theme(
+    (
+      color: (
+        theme-type: light,
+        primary: mat.$green-palette,
+        tertiary: mat.$violet-palette
+      ),
+      typography: (
+        plain-family: 'Atkinson Hyperlegible',
+        brand-family: 'Bricolage Grotesque',
+        bold-weight: 700,
+        medium-weight: 700,
+        regular-weight: 400
+      ),
+      density: 0
+    )
+  );
+}

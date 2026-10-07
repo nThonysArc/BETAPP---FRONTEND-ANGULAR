@@ -4,17 +4,19 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
+import { ThemeToggleComponent } from '../../shared/theme-toggle/theme-toggle.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [MatToolbarModule, MatButtonModule, MatIconModule],
+  imports: [MatToolbarModule, MatButtonModule, MatIconModule, ThemeToggleComponent],
   template: `
     <mat-toolbar color="primary">
       <span>Avance de Produccion - Beta Agroindustrial</span>
       <span class="spacer"></span>
       <span class="usuario">{{ authService.usuario()?.nombreCompleto }} ({{ authService.usuario()?.rol }})</span>
-      <button mat-button (click)="cerrarSesion()">Cerrar sesion</button>
+      <app-theme-toggle />
+      <button mat-button class="cerrar-sesion" (click)="cerrarSesion()">Cerrar sesion</button>
     </mat-toolbar>
 
     <div class="contenido">
@@ -35,9 +37,11 @@ import { AuthService } from '../../core/auth/auth.service';
   `,
   styles: [`
     .spacer { flex: 1 1 auto; }
-    .usuario { margin-right: 16px; font-size: 0.9rem; }
-    .contenido { padding: 24px; }
-    .accesos { display: flex; gap: 12px; margin: 16px 0; }
+    .usuario { margin-right: var(--space-2); font-size: 0.9rem; }
+    .cerrar-sesion,
+    app-theme-toggle { --mdc-text-button-label-text-color: var(--on-brand); --mat-icon-button-icon-color: var(--on-brand); color: var(--on-brand); }
+    .contenido { padding: var(--space-5); }
+    .accesos { display: flex; flex-wrap: wrap; gap: var(--space-3); margin: var(--space-4) 0; }
   `]
 })
 export class DashboardComponent {
