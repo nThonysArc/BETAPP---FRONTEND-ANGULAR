@@ -1,13 +1,16 @@
-export interface CorteDetalle {
+export interface VariedadDetalle {
+  clienteUuid: string | null;
+  variedad: string;
+  jabas: number;
+  pesoPorViaje: number;
+  orden: number;
+}
+
+export interface MaquinaKato {
   clienteUuid: string | null;
   maquinaId: number;
   maquinaNombre: string | null;
-  maquinaKatoId: number;
-  katoNombre: string | null;
-  variedadId: number;
-  variedadNombre: string | null;
-  jabas: number;
-  pesoTotal: number;
+  katoNombre: string;
   empacadores: number;
   kgPorEmpacador: number;
   orden: number;
@@ -16,10 +19,11 @@ export interface CorteDetalle {
 export interface CortePlantilla {
   procesoDiarioId: number;
   numeroCorteSugerido: number;
-  horaInicio: string;
+  horaInicio: string;   // HH:mm:ss
   horaFin: string;
   fechaCosecha: string | null;
-  detalles: CorteDetalle[];
+  variedades: VariedadDetalle[];
+  maquinasKato: MaquinaKato[];
 }
 
 export interface CorteRequest {
@@ -28,7 +32,8 @@ export interface CorteRequest {
   horaFin: string;
   fechaCosecha?: string | null;
   observacion?: string | null;
-  detalles: CorteDetalle[];
+  variedades: VariedadDetalle[];
+  maquinasKato: MaquinaKato[];
   jabasTotalAjustado?: number | null;
   pesoTotalAjustado?: number | null;
   motivoAjuste?: string | null;
@@ -48,7 +53,10 @@ export interface Corte {
   pesoTotalCalculado: number;
   pesoTotalAjustado: number | null;
   pesoTotalEfectivo: number;
+  estado: 'BORRADOR' | 'CONSOLIDADO';
+  consolidadoEn: string | null;
   requiereRevision: boolean;
   clienteUuid: string;
-  detalles: CorteDetalle[];
+  variedades: VariedadDetalle[];
+  maquinasKato: MaquinaKato[];
 }
