@@ -46,6 +46,14 @@ export const routes: Routes = [
       )
   },
   {
+    path: 'admin/supervisores',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/admin/supervisor-list/supervisor-list.component').then(
+        (m) => m.SupervisorListComponent
+      )
+  },
+  {
     path: 'admin/variedades',
     canActivate: [authGuard],
     loadComponent: () =>

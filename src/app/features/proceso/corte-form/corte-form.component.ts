@@ -20,9 +20,11 @@ import { ProcesoDiarioService } from '../../../core/services/proceso-diario.serv
 import { CampanaService } from '../../../core/services/campana.service';
 import { MaquinaService } from '../../../core/services/maquina.service';
 import { MaquinaKatoService } from '../../../core/services/maquina-kato.service';
+import { UsuarioService } from '../../../core/services/usuario.service';
 import { VariedadService } from '../../../core/services/variedad.service';
 import { IngresoMateriaPrimaService } from '../../../core/services/ingreso-materia-prima.service';
-import { CorteRequest } from '../../../core/models/corte.model';
+import { CorteRequest, CorteSupervisor } from '../../../core/models/corte.model';
+import { UsuarioResumen } from '../../../core/models/usuario.model';
 import { Maquina } from '../../../core/models/maquina.model';
 import { MaquinaKato } from '../../../core/models/maquina-kato.model';
 import { Variedad } from '../../../core/models/variedad.model';
@@ -56,6 +58,7 @@ export class CorteFormComponent {
   private readonly campanaService = inject(CampanaService);
   private readonly maquinaService = inject(MaquinaService);
   private readonly maquinaKatoService = inject(MaquinaKatoService);
+  private readonly usuarioService = inject(UsuarioService);
   private readonly variedadService = inject(VariedadService);
   private readonly ingresoService = inject(IngresoMateriaPrimaService);
   private readonly snackBar = inject(MatSnackBar);
@@ -71,6 +74,7 @@ export class CorteFormComponent {
   readonly cargandoPlantilla = signal(true);
   readonly guardando = signal(false);
   readonly maquinasDisponibles = signal<Maquina[]>([]);
+  readonly supervisoresDisponibles = signal<UsuarioResumen[]>([]);
   readonly variedadesDisponibles = signal<Variedad[]>([]);
   readonly hayIngresoRegistrado = signal(false);
   readonly procesoEstado = signal<'ABIERTO' | 'CERRADO' | null>(null);
@@ -83,6 +87,19 @@ export class CorteFormComponent {
 
   /** maquinaId -> katos activos de esa maquina, para el select dependiente. */
   private katosPorMaquina = new Map<number, MaquinaKato[]>();
+
+  /**
+   * maquinaId -> supervisorId elegido para ESTE corte (null = sin supervisor).
+   * Un solo supervisor por maquina y por hora. Se precarga con el del corte
+   * anterior (plantilla) y, para una maquina nueva, con el sugerido de la maquina.
+   */
+  private supervisorPorMaquina = new Map<number, number | null>();
+
+  /**
+   * maquinaId -> observacion de ESTA maquina en ESTA hora. Nunca se hereda del corte
+   * anterior: cada hora se anota lo que paso en esa hora.
+   */
+  private observacionPorMaquina = new Map<number, string>();
 
   readonly form = this.fb.group({
     horaInicio: ['', Validators.required],
@@ -105,6 +122,67 @@ export class CorteFormComponent {
     return this.katosPorMaquina.get(maquinaId) ?? [];
   }
 
+  /** Maquinas que aparecen en el detalle, sin repetir y en orden de aparicion. */
+  maquinasEnUso(): { id: number; nombre: string }[] {
+    const vistas = new Set<number>();
+    const resultado: { id: number; nombre: string }[] = [];
+
+    for (const control of this.detalles.controls) {
+      const id = control.get('maquinaId')?.value as number | null;
+      if (id === null || id === undefined || vistas.has(id)) continue;
+      vistas.add(id);
+      const maquina = this.maquinasDisponibles().find((m) => m.id === id);
+      resultado.push({ id, nombre: maquina?.nombre ?? `Maquina ${id}` });
+    }
+    return resultado;
+  }
+
+  supervisorDe(maquinaId: number): number | null {
+    return this.supervisorPorMaquina.get(maquinaId) ?? null;
+  }
+
+  observacionDe(maquinaId: number): string {
+    return this.observacionPorMaquina.get(maquinaId) ?? '';
+  }
+
+  onObservacionChange(maquinaId: number, texto: string): void {
+    this.observacionPorMaquina.set(maquinaId, texto);
+  }
+
+  onSupervisorChange(maquinaId: number, supervisorId: number | null): void {
+    this.supervisorPorMaquina.set(maquinaId, supervisorId ?? null);
+  }
+
+  /** Si la maquina aun no tiene supervisor definido en este corte, propone el sugerido de la maquina. */
+  private asegurarSupervisor(maquinaId: number | null): void {
+    if (maquinaId === null || maquinaId === undefined || this.supervisorPorMaquina.has(maquinaId)) return;
+    const maquina = this.maquinasDisponibles().find((m) => m.id === maquinaId);
+    this.supervisorPorMaquina.set(maquinaId, maquina?.supervisorId ?? null);
+  }
+
+  /** Carga los supervisores del corte (plantilla o corte existente) y agrega a la lista a los que ya no estan activos. */
+  private precargarSupervisores(supervisores: CorteSupervisor[] | undefined, activos: UsuarioResumen[]): void {
+    const opciones = [...activos];
+    this.supervisorPorMaquina.clear();
+    this.observacionPorMaquina.clear();
+
+    (supervisores ?? []).forEach((s) => {
+      this.supervisorPorMaquina.set(s.maquinaId, s.supervisorId);
+      if (s.observacion) {
+        this.observacionPorMaquina.set(s.maquinaId, s.observacion);
+      }
+      if (s.supervisorId !== null && !opciones.some((u) => u.id === s.supervisorId)) {
+        opciones.push({
+          id: s.supervisorId,
+          nombreCompleto: s.supervisorNombre ?? `Usuario ${s.supervisorId}`,
+          rol: 'SUPERVISOR'
+        });
+      }
+    });
+
+    this.supervisoresDisponibles.set(opciones);
+  }
+
   private cargarDatosIniciales(): void {
     this.cargandoPlantilla.set(true);
 
@@ -118,7 +196,10 @@ export class CorteFormComponent {
             const datosBase$ = forkJoin({
               ingresos: this.ingresoService.listar(this.procesoDiarioId),
               variedades: this.variedadService.listarPorProducto(campana.productoId),
-              maquinas: this.maquinaService.listarPorCampana(proceso.campanaId)
+              maquinas: this.maquinaService.listarPorCampana(proceso.campanaId),
+              supervisores: this.usuarioService.listarSupervisores().pipe(
+                catchError(() => of([] as UsuarioResumen[]))
+              )
             });
 
             const contenidoCorte$ = this.esEdicion
@@ -127,7 +208,7 @@ export class CorteFormComponent {
 
             forkJoin({ base: datosBase$, corte: contenidoCorte$ }).subscribe({
               next: ({ base, corte }) => {
-                const { ingresos, variedades, maquinas } = base;
+                const { ingresos, variedades, maquinas, supervisores } = base;
 
                 this.variedadesDisponibles.set(variedades);
                 this.maquinasDisponibles.set(maquinas);
@@ -149,6 +230,10 @@ export class CorteFormComponent {
                 forkJoin(cargasKatos.length > 0 ? cargasKatos : [of([] as MaquinaKato[])]).subscribe({
                   next: (listas) => {
                     maquinas.forEach((m, i) => this.katosPorMaquina.set(m.id, listas[i] ?? []));
+
+                    // Primero los supervisores del corte: al agregar filas, las maquinas
+                    // que ya tienen supervisor lo conservan y solo las nuevas usan el sugerido.
+                    this.precargarSupervisores((corte as any).supervisores, supervisores);
 
                     if (this.esEdicion) {
                       const c = corte as any;
@@ -219,12 +304,14 @@ export class CorteFormComponent {
     });
 
     this.configurarAutoCalculo(grupo);
+    this.asegurarSupervisor(maquinaId);
     this.detalles.push(grupo);
   }
 
   private configurarAutoCalculo(grupo: FormGroup): void {
-    grupo.get('maquinaId')?.valueChanges.subscribe(() => {
+    grupo.get('maquinaId')?.valueChanges.subscribe((maquinaId) => {
       grupo.get('maquinaKatoId')?.setValue(null);
+      this.asegurarSupervisor(maquinaId);
     });
 
     const recalcularPesoTotal = () => {
@@ -280,6 +367,13 @@ export class CorteFormComponent {
         empacadores: d.empacadores,
         kgPorEmpacador: d.kgPorEmpacador,
         orden: i + 1
+      })),
+      supervisores: this.maquinasEnUso().map((m) => ({
+        maquinaId: m.id,
+        maquinaNombre: null,
+        supervisorId: this.supervisorDe(m.id),
+        supervisorNombre: null,
+        observacion: this.observacionDe(m.id).trim() || null
       }))
     };
   }

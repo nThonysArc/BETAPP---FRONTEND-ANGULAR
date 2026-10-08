@@ -66,6 +66,36 @@
   min-width: 90px;
 }
 
+.fila-supervisor {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.nombre-maquina {
+  min-width: 140px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.campo-supervisor {
+  flex: 1;
+  min-width: 220px;
+}
+
+.campo-observacion-maquina {
+  flex: 2;
+  min-width: 260px;
+}
+
+.aviso-supervisor {
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
 .full-width {
   width: 100%;
   margin-bottom: 8px;

@@ -32,6 +32,11 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle/theme-toggle.com
           <mat-icon>eco</mat-icon>
           Administrar Variedades
         </button>
+
+        <button mat-stroked-button (click)="irASupervisores()">
+          <mat-icon>supervisor_account</mat-icon>
+          Administrar Supervisores
+        </button>
       </div>
     </div>
   `,
@@ -59,5 +64,9 @@ export class DashboardComponent {
 
   irAVariedades(): void {
     this.router.navigate(['/admin/variedades']);
+  }
+
+  irASupervisores(): void {
+    this.router.navigate(['/admin/supervisores']);
   }
 }

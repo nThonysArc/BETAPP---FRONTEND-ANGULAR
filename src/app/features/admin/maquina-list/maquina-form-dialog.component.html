@@ -17,6 +17,17 @@
         <mat-error>No puede ser negativo</mat-error>
       }
     </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Supervisor sugerido</mat-label>
+      <mat-select formControlName="supervisorId">
+        <mat-option [value]="null">Sin supervisor</mat-option>
+        @for (u of supervisores(); track u.id) {
+          <mat-option [value]="u.id">{{ u.nombreCompleto }}</mat-option>
+        }
+      </mat-select>
+      <mat-hint>Solo se propone en el primer corte del dia; cada corte guarda su propio supervisor.</mat-hint>
+    </mat-form-field>
   </form>
 </mat-dialog-content>
 

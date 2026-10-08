@@ -13,6 +13,16 @@ export interface CorteDetalle {
   orden: number;
 }
 
+/** Supervisor de una maquina durante un corte (uno por maquina y por hora). */
+export interface CorteSupervisor {
+  maquinaId: number;
+  maquinaNombre: string | null;
+  supervisorId: number | null;
+  supervisorNombre: string | null;
+  /** Observacion de esta maquina en esta hora (sale en la columna OBSERVACION del reporte). */
+  observacion: string | null;
+}
+
 export interface CortePlantilla {
   procesoDiarioId: number;
   numeroCorteSugerido: number;
@@ -20,6 +30,7 @@ export interface CortePlantilla {
   horaFin: string;
   fechaCosecha: string | null;
   detalles: CorteDetalle[];
+  supervisores: CorteSupervisor[];
 }
 
 export interface CorteRequest {
@@ -29,6 +40,7 @@ export interface CorteRequest {
   fechaCosecha?: string | null;
   observacion?: string | null;
   detalles: CorteDetalle[];
+  supervisores?: CorteSupervisor[];
   jabasTotalAjustado?: number | null;
   pesoTotalAjustado?: number | null;
   motivoAjuste?: string | null;
@@ -51,4 +63,5 @@ export interface Corte {
   requiereRevision: boolean;
   clienteUuid: string;
   detalles: CorteDetalle[];
+  supervisores: CorteSupervisor[];
 }

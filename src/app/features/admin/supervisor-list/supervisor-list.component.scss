@@ -1,0 +1,19 @@
+.contenido {
+  padding: 24px;
+}
+
+.acciones-header {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 16px;
+}
+
+.tabla {
+  width: 100%;
+}
+
+.vacio {
+  color: var(--ink-muted);
+  margin-top: 16px;
+}

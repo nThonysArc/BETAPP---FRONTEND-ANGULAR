@@ -148,9 +148,54 @@
       </mat-card>
 
       <mat-card class="seccion">
+        <mat-card-header>
+          <mat-card-title>Supervisor y observaciones por maquina</mat-card-title>
+          <mat-card-subtitle>
+            Un supervisor por maquina en esta hora (se copia del corte anterior; cambialo si hubo rotacion). La observacion de cada maquina sale en el reporte.
+          </mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          @if (supervisoresDisponibles().length === 0) {
+            <p class="aviso-supervisor">
+              Aun no hay supervisores registrados. Crealos en Panel principal &gt; Administrar Supervisores.
+            </p>
+          }
+          @if (maquinasEnUso().length === 0) {
+            <p class="aviso-supervisor">Elige una maquina en el detalle para asignarle supervisor.</p>
+          }
+          @for (m of maquinasEnUso(); track m.id) {
+            <div class="fila-supervisor">
+              <span class="nombre-maquina">{{ m.nombre }}</span>
+              <mat-form-field appearance="outline" class="campo-supervisor">
+                <mat-label>Supervisor</mat-label>
+                <mat-select
+                  [value]="supervisorDe(m.id)"
+                  (selectionChange)="onSupervisorChange(m.id, $event.value)"
+                >
+                  <mat-option [value]="null">Sin supervisor</mat-option>
+                  @for (u of supervisoresDisponibles(); track u.id) {
+                    <mat-option [value]="u.id">{{ u.nombreCompleto }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="campo-observacion-maquina">
+                <mat-label>Observacion de {{ m.nombre }} (opcional)</mat-label>
+                <textarea
+                  matInput
+                  rows="2"
+                  [value]="observacionDe(m.id)"
+                  (input)="onObservacionChange(m.id, $any($event.target).value)"
+                ></textarea>
+              </mat-form-field>
+            </div>
+          }
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="seccion">
         <mat-card-content>
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Observacion (opcional)</mat-label>
+            <mat-label>Observacion general de la hora (opcional)</mat-label>
             <textarea matInput formControlName="observacion" rows="2"></textarea>
           </mat-form-field>
 
