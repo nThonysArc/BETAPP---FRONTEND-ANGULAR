@@ -163,9 +163,33 @@
           @if (maquinasEnUso().length === 0) {
             <p class="aviso-supervisor">Elige una maquina en el detalle para asignarle supervisor.</p>
           }
+          @if (maquinasEnUso().length > 0) {
+            <div class="barra-almuerzo">
+              <button mat-stroked-button type="button" (click)="marcarTodoElPersonalEnAlmuerzo()">
+                <mat-icon>restaurant</mat-icon>
+                Todo el personal a almorzar
+              </button>
+              @if (todoElPersonalAlmuerza()) {
+                <span class="aviso-supervisor">
+                  Todas las maquinas estan en almuerzo: el reporte mostrara la barra "ALMUERZO DEL PERSONAL" y esta
+                  hora no cuenta como hora de produccion.
+                </span>
+              } @else {
+                <span class="aviso-supervisor">
+                  Una maquina en almuerzo registra 0 jabas y 0 kg en esta hora.
+                </span>
+              }
+            </div>
+          }
           @for (m of maquinasEnUso(); track m.id) {
             <div class="fila-supervisor">
               <span class="nombre-maquina">{{ m.nombre }}</span>
+              <mat-checkbox
+                [checked]="almuerzoDe(m.id)"
+                (change)="onAlmuerzoChange(m.id, $event.checked)"
+              >
+                Almuerzo
+              </mat-checkbox>
               <mat-form-field appearance="outline" class="campo-supervisor">
                 <mat-label>Supervisor</mat-label>
                 <mat-select

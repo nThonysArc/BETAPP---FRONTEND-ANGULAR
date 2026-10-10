@@ -21,6 +21,8 @@ export interface CorteSupervisor {
   supervisorNombre: string | null;
   /** Observacion de esta maquina en esta hora (sale en la columna OBSERVACION del reporte). */
   observacion: string | null;
+  /** La maquina salio a almorzar en esta hora (su produccion queda en 0). */
+  almuerzo: boolean;
 }
 
 export interface CortePlantilla {

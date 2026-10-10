@@ -90,6 +90,14 @@
   min-width: 260px;
 }
 
+.barra-almuerzo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
 .aviso-supervisor {
   color: var(--ink-muted);
   font-size: 0.9rem;

@@ -11,6 +11,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -45,6 +46,7 @@ import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading
     MatSnackBarModule,
     MatCardModule,
     MatChipsModule,
+    MatCheckboxModule,
     MatProgressSpinnerModule,
     LoadingSpinnerComponent
   ],
@@ -101,6 +103,9 @@ export class CorteFormComponent {
    */
   private observacionPorMaquina = new Map<number, string>();
 
+  /** Maquinas que salen a almorzar en ESTA hora. Nunca se hereda del corte anterior. */
+  private almuerzoPorMaquina = new Set<number>();
+
   readonly form = this.fb.group({
     horaInicio: ['', Validators.required],
     horaFin: ['', Validators.required],
@@ -141,6 +146,34 @@ export class CorteFormComponent {
     return this.supervisorPorMaquina.get(maquinaId) ?? null;
   }
 
+  almuerzoDe(maquinaId: number): boolean {
+    return this.almuerzoPorMaquina.has(maquinaId);
+  }
+
+  /** Todas las maquinas del corte estan en almuerzo: el reporte mostrara la barra "ALMUERZO DEL PERSONAL". */
+  todoElPersonalAlmuerza(): boolean {
+    const maquinas = this.maquinasEnUso();
+    return maquinas.length > 0 && maquinas.every((m) => this.almuerzoDe(m.id));
+  }
+
+  onAlmuerzoChange(maquinaId: number, almuerza: boolean): void {
+    if (almuerza) {
+      this.almuerzoPorMaquina.add(maquinaId);
+      // Una maquina en almuerzo no produce: sus filas quedan en 0.
+      for (const control of this.detalles.controls) {
+        if (control.get('maquinaId')?.value === maquinaId) {
+          control.patchValue({ jabas: 0, pesoTotal: 0, kgPorEmpacador: 0 }, { emitEvent: false });
+        }
+      }
+    } else {
+      this.almuerzoPorMaquina.delete(maquinaId);
+    }
+  }
+
+  marcarTodoElPersonalEnAlmuerzo(): void {
+    this.maquinasEnUso().forEach((m) => this.onAlmuerzoChange(m.id, true));
+  }
+
   observacionDe(maquinaId: number): string {
     return this.observacionPorMaquina.get(maquinaId) ?? '';
   }
@@ -165,8 +198,12 @@ export class CorteFormComponent {
     const opciones = [...activos];
     this.supervisorPorMaquina.clear();
     this.observacionPorMaquina.clear();
+    this.almuerzoPorMaquina.clear();
 
     (supervisores ?? []).forEach((s) => {
+      if (s.almuerzo) {
+        this.almuerzoPorMaquina.add(s.maquinaId);
+      }
       this.supervisorPorMaquina.set(s.maquinaId, s.supervisorId);
       if (s.observacion) {
         this.observacionPorMaquina.set(s.maquinaId, s.observacion);
@@ -373,7 +410,8 @@ export class CorteFormComponent {
         maquinaNombre: null,
         supervisorId: this.supervisorDe(m.id),
         supervisorNombre: null,
-        observacion: this.observacionDe(m.id).trim() || null
+        observacion: this.observacionDe(m.id).trim() || null,
+        almuerzo: this.almuerzoDe(m.id)
       }))
     };
   }
