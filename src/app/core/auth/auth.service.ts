@@ -2,7 +2,7 @@ import { Injectable, computed, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { LoginRequest, LoginResponse } from '../models/auth.model';
+import { LoginRequest, LoginResponse, RolUsuario } from '../models/auth.model';
 
 const TOKEN_KEY = 'avance_token';
 const USER_KEY = 'avance_usuario';
@@ -10,7 +10,8 @@ const USER_KEY = 'avance_usuario';
 interface UsuarioActual {
   email: string;
   nombreCompleto: string;
-  rol: 'ADMIN' | 'SUPERVISOR' | 'OPERADOR';
+  rol: RolUsuario;
+  permisos: string[];
 }
 
 /**
@@ -25,7 +26,16 @@ export class AuthService {
 
   readonly usuario = this.usuarioSignal.asReadonly();
   readonly estaAutenticado = computed(() => this.usuarioSignal() !== null);
-  readonly esAdmin = computed(() => this.usuarioSignal()?.rol === 'ADMIN');
+  readonly esSuperAdmin = computed(() => this.usuarioSignal()?.rol === 'SUPER_ADMIN');
+  private readonly permisosSet = computed(() => new Set(this.usuarioSignal()?.permisos ?? []));
+
+  /**
+   * Solo sirve para mostrar u ocultar opciones. La seguridad real la aplica el backend en cada
+   * peticion; los permisos aqui son los del ultimo inicio de sesion.
+   */
+  tiene(permiso: string): boolean {
+    return this.permisosSet().has(permiso);
+  }
 
   constructor(private http: HttpClient) {}
 
@@ -50,7 +60,8 @@ export class AuthService {
     const usuario: UsuarioActual = {
       email: response.email,
       nombreCompleto: response.nombreCompleto,
-      rol: response.rol
+      rol: response.rol,
+      permisos: response.permisos ?? []
     };
     localStorage.setItem(USER_KEY, JSON.stringify(usuario));
     this.usuarioSignal.set(usuario);
@@ -60,7 +71,9 @@ export class AuthService {
     const raw = localStorage.getItem(USER_KEY);
     if (!raw) return null;
     try {
-      return JSON.parse(raw) as UsuarioActual;
+      const usuario = JSON.parse(raw) as UsuarioActual;
+      // Sesion guardada antes de existir los permisos: se obliga a iniciar sesion de nuevo
+      return Array.isArray(usuario.permisos) ? usuario : null;
     } catch {
       return null;
     }

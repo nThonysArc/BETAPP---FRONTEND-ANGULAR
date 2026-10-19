@@ -11,6 +11,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { forkJoin } from 'rxjs';
 
+import { AuthService } from '../../../core/auth/auth.service';
 import { CampanaService } from '../../../core/services/campana.service';
 import { ProductoService } from '../../../core/services/producto.service';
 import { Campana, CampanaRequest } from '../../../core/models/campana.model';
@@ -38,6 +39,7 @@ import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading
   styleUrl: './campana-list.component.scss'
 })
 export class CampanaListComponent {
+  protected readonly auth = inject(AuthService);
   private readonly campanaService = inject(CampanaService);
   private readonly productoService = inject(ProductoService);
   private readonly dialog = inject(MatDialog);

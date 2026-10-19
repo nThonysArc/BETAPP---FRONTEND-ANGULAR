@@ -10,6 +10,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { HttpErrorResponse } from '@angular/common/http';
 
+import { AuthService } from '../../../core/auth/auth.service';
 import { ProcesoDiarioService } from '../../../core/services/proceso-diario.service';
 import { CorteService } from '../../../core/services/corte.service';
 import { ReporteService } from '../../../core/services/reporte.service';
@@ -37,6 +38,7 @@ import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading
   styleUrl: './proceso-detalle.component.scss'
 })
 export class ProcesoDetalleComponent {
+  protected readonly auth = inject(AuthService);
   private readonly procesoDiarioService = inject(ProcesoDiarioService);
   private readonly corteService = inject(CorteService);
   private readonly reporteService = inject(ReporteService);

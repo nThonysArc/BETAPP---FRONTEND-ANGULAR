@@ -7,10 +7,12 @@
 
 <div class="contenido">
   <div class="acciones-header">
-    <button mat-flat-button color="primary" (click)="abrirNuevaCampana()">
-      <mat-icon>add</mat-icon>
-      Nueva campana
-    </button>
+    @if (auth.tiene('CATALOGOS_ADMINISTRAR')) {
+      <button mat-flat-button color="primary" (click)="abrirNuevaCampana()">
+        <mat-icon>add</mat-icon>
+        Nueva campana
+      </button>
+    }
 
     <mat-slide-toggle
       [checked]="mostrarInactivas()"
@@ -67,20 +69,22 @@
           <button mat-icon-button (click)="verHistorial(c)" title="Historial de procesos">
             <mat-icon>history</mat-icon>
           </button>
-          <button mat-icon-button (click)="verMaquinas(c)" title="Ver maquinas">
-            <mat-icon>precision_manufacturing</mat-icon>
-          </button>
-          <button mat-icon-button (click)="editarCampana(c)" title="Editar">
-            <mat-icon>edit</mat-icon>
-          </button>
-          @if (c.activa) {
-            <button mat-icon-button (click)="desactivar(c)" title="Desactivar">
-              <mat-icon>block</mat-icon>
+          @if (auth.tiene('CATALOGOS_ADMINISTRAR')) {
+            <button mat-icon-button (click)="verMaquinas(c)" title="Ver maquinas">
+              <mat-icon>precision_manufacturing</mat-icon>
             </button>
-          } @else {
-            <button mat-icon-button (click)="reactivar(c)" title="Reactivar">
-              <mat-icon>restart_alt</mat-icon>
+            <button mat-icon-button (click)="editarCampana(c)" title="Editar">
+              <mat-icon>edit</mat-icon>
             </button>
+            @if (c.activa) {
+              <button mat-icon-button (click)="desactivar(c)" title="Desactivar">
+                <mat-icon>block</mat-icon>
+              </button>
+            } @else {
+              <button mat-icon-button (click)="reactivar(c)" title="Reactivar">
+                <mat-icon>restart_alt</mat-icon>
+              </button>
+            }
           }
         </td>
       </ng-container>

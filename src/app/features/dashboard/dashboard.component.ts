@@ -23,20 +23,33 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle/theme-toggle.com
       <h2>Panel principal</h2>
 
       <div class="accesos">
-        <button mat-flat-button color="primary" (click)="irACampanas()">
-          <mat-icon>agriculture</mat-icon>
-          Administrar Campanas
-        </button>
+        @if (authService.tiene('PROCESOS_VER')) {
+          <button mat-flat-button color="primary" (click)="irACampanas()">
+            <mat-icon>agriculture</mat-icon>
+            {{ authService.tiene('CATALOGOS_ADMINISTRAR') ? 'Administrar Campanas' : 'Campanas y procesos' }}
+          </button>
+        }
 
-        <button mat-stroked-button (click)="irAVariedades()">
-          <mat-icon>eco</mat-icon>
-          Administrar Variedades
-        </button>
+        @if (authService.tiene('CATALOGOS_ADMINISTRAR')) {
+          <button mat-stroked-button (click)="irAVariedades()">
+            <mat-icon>eco</mat-icon>
+            Administrar Variedades
+          </button>
+        }
 
-        <button mat-stroked-button (click)="irASupervisores()">
-          <mat-icon>supervisor_account</mat-icon>
-          Administrar Supervisores
-        </button>
+        @if (authService.tiene('SUPERVISORES_ADMINISTRAR')) {
+          <button mat-stroked-button (click)="irASupervisores()">
+            <mat-icon>supervisor_account</mat-icon>
+            Administrar Supervisores
+          </button>
+        }
+
+        @if (authService.esSuperAdmin()) {
+          <button mat-stroked-button (click)="irAUsuarios()">
+            <mat-icon>admin_panel_settings</mat-icon>
+            Usuarios y permisos
+          </button>
+        }
       </div>
     </div>
   `,
@@ -64,6 +77,10 @@ export class DashboardComponent {
 
   irAVariedades(): void {
     this.router.navigate(['/admin/variedades']);
+  }
+
+  irAUsuarios(): void {
+    this.router.navigate(['/admin/usuarios']);
   }
 
   irASupervisores(): void {

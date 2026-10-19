@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { permisoGuard, superAdminGuard } from './core/auth/permiso.guard';
 
 /**
  * ORDEN DE RUTAS — regla critica del router de Angular:
@@ -27,19 +28,19 @@ export const routes: Routes = [
   // ── Administracion ─────────────────────────────────────────────────────────
   {
     path: 'admin/campanas',
-    canActivate: [authGuard],
+    canActivate: [authGuard, permisoGuard('PROCESOS_VER')],
     loadComponent: () =>
       import('./features/admin/campana-list/campana-list.component').then((m) => m.CampanaListComponent)
   },
   {
     path: 'admin/campanas/:campanaId/maquinas',
-    canActivate: [authGuard],
+    canActivate: [authGuard, permisoGuard('CATALOGOS_ADMINISTRAR')],
     loadComponent: () =>
       import('./features/admin/maquina-list/maquina-list.component').then((m) => m.MaquinaListComponent)
   },
   {
     path: 'admin/maquinas/:maquinaId/katos',
-    canActivate: [authGuard],
+    canActivate: [authGuard, permisoGuard('CATALOGOS_ADMINISTRAR')],
     loadComponent: () =>
       import('./features/admin/maquina-kato-list/maquina-kato-list.component').then(
         (m) => m.MaquinaKatoListComponent
@@ -47,15 +48,21 @@ export const routes: Routes = [
   },
   {
     path: 'admin/supervisores',
-    canActivate: [authGuard],
+    canActivate: [authGuard, permisoGuard('SUPERVISORES_ADMINISTRAR')],
     loadComponent: () =>
       import('./features/admin/supervisor-list/supervisor-list.component').then(
         (m) => m.SupervisorListComponent
       )
   },
   {
+    path: 'admin/usuarios',
+    canActivate: [authGuard, superAdminGuard],
+    loadComponent: () =>
+      import('./features/admin/usuario-list/usuario-list.component').then((m) => m.UsuarioListComponent)
+  },
+  {
     path: 'admin/variedades',
-    canActivate: [authGuard],
+    canActivate: [authGuard, permisoGuard('CATALOGOS_ADMINISTRAR')],
     loadComponent: () =>
       import('./features/admin/variedad-list/variedad-list.component').then((m) => m.VariedadListComponent)
   },
@@ -64,7 +71,7 @@ export const routes: Routes = [
   {
     // Historial de todos los procesos de una campana
     path: 'procesos/historial/:campanaId',
-    canActivate: [authGuard],
+    canActivate: [authGuard, permisoGuard('PROCESOS_VER')],
     loadComponent: () =>
       import('./features/proceso/proceso-historial/proceso-historial.component').then(
         (m) => m.ProcesoHistorialComponent
@@ -73,14 +80,14 @@ export const routes: Routes = [
   {
     // Acceso directo a un proceso especifico por su id (desde el historial)
     path: 'procesos/detalle/:procesoId',
-    canActivate: [authGuard],
+    canActivate: [authGuard, permisoGuard('PROCESOS_VER')],
     loadComponent: () =>
       import('./features/proceso/proceso-detalle/proceso-detalle.component').then((m) => m.ProcesoDetalleComponent)
   },
   {
     // Ingreso de materia prima de un proceso
     path: 'procesos/:procesoId/ingreso',
-    canActivate: [authGuard],
+    canActivate: [authGuard, permisoGuard('MATERIA_PRIMA_VER')],
     loadComponent: () =>
       import('./features/proceso/ingreso-materia-prima/ingreso-materia-prima.component').then(
         (m) => m.IngresoMateriaPrimaComponent
@@ -89,14 +96,14 @@ export const routes: Routes = [
   {
     // Formulario de nuevo corte
     path: 'procesos/:procesoId/cortes/nuevo',
-    canActivate: [authGuard],
+    canActivate: [authGuard, permisoGuard('CORTES_CREAR')],
     loadComponent: () =>
       import('./features/proceso/corte-form/corte-form.component').then((m) => m.CorteFormComponent)
   },
   {
     // Formulario de edicion de corte existente
     path: 'procesos/:procesoId/cortes/:corteId/editar',
-    canActivate: [authGuard],
+    canActivate: [authGuard, permisoGuard('CORTES_VER')],
     loadComponent: () =>
       import('./features/proceso/corte-form/corte-form.component').then((m) => m.CorteFormComponent)
   },
@@ -104,7 +111,7 @@ export const routes: Routes = [
     // Proceso de HOY de una campana — va AL FINAL de las rutas /procesos/*
     // para no capturar 'historial', 'detalle', etc.
     path: 'procesos/:campanaId',
-    canActivate: [authGuard],
+    canActivate: [authGuard, permisoGuard('PROCESOS_VER')],
     loadComponent: () =>
       import('./features/proceso/proceso-detalle/proceso-detalle.component').then((m) => m.ProcesoDetalleComponent)
   },
