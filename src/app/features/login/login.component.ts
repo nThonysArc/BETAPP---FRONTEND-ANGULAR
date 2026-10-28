@@ -1,32 +1,26 @@
 import { Component, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { HttpErrorResponse } from '@angular/common/http';
 
 import { AuthService } from '../../core/auth/auth.service';
 import { ErrorResponse } from '../../core/models/error-response.model';
-import { ThemeToggleComponent } from '../../shared/theme-toggle/theme-toggle.component';
+import { ThemeSwitchComponent } from '../../shared/theme-switch/theme-switch.component';
+import { LoginMarcaComponent } from './login-marca.component';
+
+type CampoLogin = 'email' | 'password';
 
 @Component({
   selector: 'app-login',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
-    MatCardModule,
-    MatFormFieldModule,
-    MatInputModule,
     MatButtonModule,
-    MatIconModule,
     MatProgressSpinnerModule,
-    ThemeToggleComponent
+    ThemeSwitchComponent,
+    LoginMarcaComponent
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss'
@@ -49,7 +43,21 @@ export class LoginComponent {
     this.mostrarPassword.update((v) => !v);
   }
 
+  /** El error de un campo se muestra solo después de tocarlo, igual que antes. */
+  protected invalido(campo: CampoLogin): boolean {
+    const control = this.form.controls[campo];
+    return control.invalid && control.touched;
+  }
+
+  protected mensajeEmail(): string {
+    return this.form.controls.email.hasError('required')
+      ? 'Ingresa tu correo electrónico'
+      : 'Escribe un correo válido, por ejemplo nombre@empresa.com';
+  }
+
   onSubmit(): void {
+    if (this.cargando()) return;
+
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -68,7 +76,7 @@ export class LoginComponent {
       error: (err: HttpErrorResponse) => {
         this.cargando.set(false);
         const body = err.error as ErrorResponse | undefined;
-        this.errorMensaje.set(body?.message ?? 'No se pudo iniciar sesion. Intenta de nuevo.');
+        this.errorMensaje.set(body?.message ?? 'No se pudo iniciar sesión. Inténtalo de nuevo.');
       }
     });
   }

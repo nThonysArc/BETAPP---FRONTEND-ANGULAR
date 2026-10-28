@@ -28,7 +28,6 @@ export interface MaquinaFormDialogData {
       display: flex;
       flex-direction: column;
       gap: 8px;
-      min-width: 320px;
       padding-top: 8px;
     }
   `]

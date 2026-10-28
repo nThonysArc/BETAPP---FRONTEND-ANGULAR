@@ -72,30 +72,30 @@
   @if (cargando()) {
     <app-loading-spinner mensaje="Cargando ingresos..." />
   } @else {
-    <table mat-table [dataSource]="ingresos()" class="tabla">
+    <table mat-table [dataSource]="ingresos()" class="tabla tabla-apilada tabla-apilada--rejilla">
       <ng-container matColumnDef="variedad">
         <th mat-header-cell *matHeaderCellDef>Variedad</th>
-        <td mat-cell *matCellDef="let i">{{ i.variedadNombre }}</td>
+        <td mat-cell *matCellDef="let i" data-label="Variedad" data-titulo>{{ i.variedadNombre }}</td>
       </ng-container>
 
       <ng-container matColumnDef="jabas">
         <th mat-header-cell *matHeaderCellDef>Jabas</th>
-        <td mat-cell *matCellDef="let i">{{ i.jabas }}</td>
+        <td mat-cell *matCellDef="let i" data-label="Jabas">{{ i.jabas }}</td>
       </ng-container>
 
       <ng-container matColumnDef="kilos">
         <th mat-header-cell *matHeaderCellDef>Kilos</th>
-        <td mat-cell *matCellDef="let i">{{ i.kilos }}</td>
+        <td mat-cell *matCellDef="let i" data-label="Kilos">{{ i.kilos }}</td>
       </ng-container>
 
       <ng-container matColumnDef="pesoPromedio">
         <th mat-header-cell *matHeaderCellDef>Peso promedio/jaba</th>
-        <td mat-cell *matCellDef="let i">{{ i.pesoPromedioPorJaba ?? '-' }}</td>
+        <td mat-cell *matCellDef="let i" data-label="Peso prom./jaba">{{ i.pesoPromedioPorJaba ?? '-' }}</td>
       </ng-container>
 
       <ng-container matColumnDef="actualizadoEn">
         <th mat-header-cell *matHeaderCellDef>Actualizado</th>
-        <td mat-cell *matCellDef="let i">{{ i.actualizadoEn | date: 'short' }}</td>
+        <td mat-cell *matCellDef="let i" data-label="Actualizado">{{ i.actualizadoEn | date: 'short' }}</td>
       </ng-container>
 
       <tr mat-header-row *matHeaderRowDef="columnas"></tr>

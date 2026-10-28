@@ -16,6 +16,7 @@ import { CorteService } from '../../../core/services/corte.service';
 import { ReporteService } from '../../../core/services/reporte.service';
 import { ProcesoDiario } from '../../../core/models/proceso-diario.model';
 import { Corte } from '../../../core/models/corte.model';
+import { Advertencia } from '../../../core/models/advertencia.model';
 import { toIsoDateString } from '../../../core/utils/date.util';
 import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading-spinner.component';
@@ -62,6 +63,8 @@ export class ProcesoDetalleComponent {
 
   readonly proceso = signal<ProcesoDiario | null>(null);
   readonly cortes = signal<Corte[]>([]);
+  /** Hallazgos de consistencia del dia (solo productos con plantilla Vid). */
+  readonly advertencias = signal<Advertencia[]>([]);
   readonly cargando = signal(true);
   readonly buscandoProceso = signal(true);
   readonly generandoReporte = signal(false);
@@ -131,11 +134,21 @@ export class ProcesoDetalleComponent {
       next: (cortes) => {
         this.cortes.set(cortes);
         this.cargando.set(false);
+        this.cargarAdvertencias(procesoDiarioId);
       },
       error: () => {
         this.cargando.set(false);
         this.snackBar.open('Error al cargar los cortes', 'Cerrar', { duration: 4000 });
       }
+    });
+  }
+
+  /** Es informativo: si falla (o no hay permiso) simplemente no se muestran avisos. */
+  private cargarAdvertencias(procesoDiarioId: number): void {
+    if (!this.auth.tiene('CORTES_VER')) return;
+    this.reporteService.obtenerAdvertencias(procesoDiarioId).subscribe({
+      next: (lista) => this.advertencias.set(lista),
+      error: () => this.advertencias.set([])
     });
   }
 

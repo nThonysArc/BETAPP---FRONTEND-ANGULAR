@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
-import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -23,12 +23,14 @@ import { MaquinaService } from '../../../core/services/maquina.service';
 import { MaquinaKatoService } from '../../../core/services/maquina-kato.service';
 import { UsuarioService } from '../../../core/services/usuario.service';
 import { VariedadService } from '../../../core/services/variedad.service';
+import { ProductoService } from '../../../core/services/producto.service';
 import { IngresoMateriaPrimaService } from '../../../core/services/ingreso-materia-prima.service';
 import { CorteRequest, CorteSupervisor } from '../../../core/models/corte.model';
 import { UsuarioResumen } from '../../../core/models/usuario.model';
 import { Maquina } from '../../../core/models/maquina.model';
 import { MaquinaKato } from '../../../core/models/maquina-kato.model';
 import { Variedad } from '../../../core/models/variedad.model';
+import { Producto } from '../../../core/models/producto.model';
 import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading-spinner.component';
 
 @Component({
@@ -62,6 +64,7 @@ export class CorteFormComponent {
   private readonly maquinaKatoService = inject(MaquinaKatoService);
   private readonly usuarioService = inject(UsuarioService);
   private readonly variedadService = inject(VariedadService);
+  private readonly productoService = inject(ProductoService);
   private readonly ingresoService = inject(IngresoMateriaPrimaService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly route = inject(ActivatedRoute);
@@ -81,6 +84,9 @@ export class CorteFormComponent {
   readonly hayIngresoRegistrado = signal(false);
   readonly procesoEstado = signal<'ABIERTO' | 'CERRADO' | null>(null);
   readonly requiereRevision = signal(false);
+
+  /** El producto de la campana usa la plantilla Vid: modulo + personas + jabas (sin kato ni kg). */
+  readonly esVid = signal(false);
 
   private campanaId: number | null = null;
 
@@ -232,6 +238,7 @@ export class CorteFormComponent {
           next: (campana) => {
             const datosBase$ = forkJoin({
               ingresos: this.ingresoService.listar(this.procesoDiarioId),
+              productos: this.productoService.listar().pipe(catchError(() => of([] as Producto[]))),
               variedades: this.variedadService.listarPorProducto(campana.productoId),
               maquinas: this.maquinaService.listarPorCampana(proceso.campanaId),
               supervisores: this.usuarioService.listarSupervisores().pipe(
@@ -245,7 +252,10 @@ export class CorteFormComponent {
 
             forkJoin({ base: datosBase$, corte: contenidoCorte$ }).subscribe({
               next: ({ base, corte }) => {
-                const { ingresos, variedades, maquinas, supervisores } = base;
+                const { ingresos, variedades, maquinas, supervisores, productos } = base;
+
+                // Debe fijarse ANTES de crear las filas: define si el kato es obligatorio.
+                this.esVid.set(productos.find((p) => p.id === campana.productoId)?.plantillaReporte === 'VID');
 
                 this.variedadesDisponibles.set(variedades);
                 this.maquinasDisponibles.set(maquinas);
@@ -332,7 +342,7 @@ export class CorteFormComponent {
   ): void {
     const grupo = this.fb.group({
       maquinaId: [maquinaId, Validators.required],
-      maquinaKatoId: [maquinaKatoId, Validators.required],
+      maquinaKatoId: [maquinaKatoId, this.esVid() ? [] : Validators.required],
       variedadId: [variedadId, Validators.required],
       jabas: [jabas, [Validators.required, Validators.min(0)]],
       pesoTotal: [pesoTotal, [Validators.required, Validators.min(0)]],
@@ -376,6 +386,54 @@ export class CorteFormComponent {
     grupo.get('variedadId')?.valueChanges.subscribe(recalcularPesoTotal);
     grupo.get('pesoTotal')?.valueChanges.subscribe(recalcularKgPorEmpacador);
     grupo.get('empacadores')?.valueChanges.subscribe(recalcularKgPorEmpacador);
+  }
+
+  /** Rend/persona = jabas / personas (siempre calculado, igual que en el reporte). */
+  rendimiento(grupo: AbstractControl): number | null {
+    const jabas = Number(grupo.get('jabas')?.value) || 0;
+    const personas = Number(grupo.get('empacadores')?.value) || 0;
+    return personas > 0 ? Math.round(jabas / personas) : null;
+  }
+
+  /** Minutos entre "Desde" y "Hasta" (null si falta alguno o el rango es invalido). */
+  duracionMinutos(): number | null {
+    const { horaInicio, horaFin } = this.form.getRawValue();
+    if (!horaInicio || !horaFin) return null;
+    const [h1, m1] = horaInicio.split(':').map(Number);
+    const [h2, m2] = horaFin.split(':').map(Number);
+    const minutos = h2 * 60 + m2 - (h1 * 60 + m1);
+    return minutos > 0 ? minutos : null;
+  }
+
+  /**
+   * Avisos en vivo (solo Vid). No bloquean el guardado: son las mismas reglas que valida
+   * el servidor, mostradas antes de guardar para corregir el dato a tiempo.
+   */
+  avisosVid(): string[] {
+    if (!this.esVid()) return [];
+    const avisos: string[] = [];
+
+    const minutos = this.duracionMinutos();
+    if (minutos !== null && (minutos < 55 || minutos > 65)) {
+      avisos.push(`Esta hora dura ${minutos} min; lo normal es 60. Verifica el horario.`);
+    }
+
+    this.detalles.controls.forEach((grupo) => {
+      const maquinaId = grupo.get('maquinaId')?.value as number | null;
+      if (maquinaId === null || maquinaId === undefined || this.almuerzoDe(maquinaId)) return;
+
+      const nombre = this.maquinasDisponibles().find((m) => m.id === maquinaId)?.nombre ?? `Modulo ${maquinaId}`;
+      const jabas = Number(grupo.get('jabas')?.value) || 0;
+      const personas = Number(grupo.get('empacadores')?.value) || 0;
+
+      if (jabas > 0 && personas === 0) {
+        avisos.push(`${nombre}: hay jabas pero 0 personas.`);
+      }
+      if (personas > 0 && jabas === 0 && !this.observacionDe(maquinaId).trim()) {
+        avisos.push(`${nombre}: hay personas pero 0 jabas. Si fue un paro, anotalo en la observacion.`);
+      }
+    });
+    return avisos;
   }
 
   eliminarDetalle(index: number): void {

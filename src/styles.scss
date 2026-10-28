@@ -3,6 +3,7 @@
 // src/styles/beta-tokens.css (ver "styles" en angular.json).
 @use '@angular/material' as mat;
 @use './styles/beta-material';
+@use './styles/beta-layout';
 
 html {
   @include mat.theme(

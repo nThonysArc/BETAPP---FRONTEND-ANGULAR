@@ -62,38 +62,49 @@
       }
     </div>
 
+    @if (advertencias().length > 0) {
+      <section class="advertencias" aria-label="Advertencias de consistencia">
+        <h3><mat-icon>warning</mat-icon> Revisar antes de compartir el reporte ({{ advertencias().length }})</h3>
+        <ul>
+          @for (a of advertencias(); track $index) {
+            <li>{{ a.mensaje }}</li>
+          }
+        </ul>
+      </section>
+    }
+
     @if (cargando()) {
       <app-loading-spinner mensaje="Cargando cortes..." />
     } @else {
-      <table mat-table [dataSource]="cortes()" class="tabla">
+      <table mat-table [dataSource]="cortes()" class="tabla tabla-apilada tabla-apilada--rejilla">
         <ng-container matColumnDef="numeroCorte">
           <th mat-header-cell *matHeaderCellDef>#</th>
-          <td mat-cell *matCellDef="let c">{{ c.numeroCorte }}</td>
+          <td mat-cell *matCellDef="let c" data-label="#" data-titulo="Corte">{{ c.numeroCorte }}</td>
         </ng-container>
 
         <ng-container matColumnDef="horaInicio">
           <th mat-header-cell *matHeaderCellDef>Desde</th>
-          <td mat-cell *matCellDef="let c">{{ c.horaInicio }}</td>
+          <td mat-cell *matCellDef="let c" data-label="Desde">{{ c.horaInicio }}</td>
         </ng-container>
 
         <ng-container matColumnDef="horaFin">
           <th mat-header-cell *matHeaderCellDef>Hasta</th>
-          <td mat-cell *matCellDef="let c">{{ c.horaFin }}</td>
+          <td mat-cell *matCellDef="let c" data-label="Hasta">{{ c.horaFin }}</td>
         </ng-container>
 
         <ng-container matColumnDef="jabas">
           <th mat-header-cell *matHeaderCellDef>Jabas</th>
-          <td mat-cell *matCellDef="let c">{{ c.jabasTotalEfectivo }}</td>
+          <td mat-cell *matCellDef="let c" data-label="Jabas">{{ c.jabasTotalEfectivo }}</td>
         </ng-container>
 
         <ng-container matColumnDef="peso">
           <th mat-header-cell *matHeaderCellDef>Peso (kg)</th>
-          <td mat-cell *matCellDef="let c">{{ c.pesoTotalEfectivo }}</td>
+          <td mat-cell *matCellDef="let c" data-label="Peso (kg)">{{ c.pesoTotalEfectivo }}</td>
         </ng-container>
 
         <ng-container matColumnDef="acciones">
           <th mat-header-cell *matHeaderCellDef></th>
-          <td mat-cell *matCellDef="let c">
+          <td mat-cell *matCellDef="let c" [attr.data-label]="c.requiereRevision ? 'Revisión' : null" data-ancho>
             @if (c.requiereRevision) {
               <mat-icon title="Requiere revision - un corte anterior fue editado" class="alerta">warning</mat-icon>
             }

@@ -17,10 +17,14 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle/theme-toggle.com
       <span class="usuario">{{ authService.usuario()?.nombreCompleto }} ({{ authService.usuario()?.rol }})</span>
       <app-theme-toggle />
       <button mat-button class="cerrar-sesion" (click)="cerrarSesion()">Cerrar sesion</button>
+      <button mat-icon-button class="cerrar-sesion cerrar-sesion--icono" aria-label="Cerrar sesion" (click)="cerrarSesion()">
+        <mat-icon>logout</mat-icon>
+      </button>
     </mat-toolbar>
 
     <div class="contenido">
       <h2>Panel principal</h2>
+      <p class="sesion">{{ authService.usuario()?.nombreCompleto }} ({{ authService.usuario()?.rol }})</p>
 
       <div class="accesos">
         @if (authService.tiene('PROCESOS_VER')) {
@@ -55,11 +59,23 @@ import { ThemeToggleComponent } from '../../shared/theme-toggle/theme-toggle.com
   `,
   styles: [`
     .spacer { flex: 1 1 auto; }
-    .usuario { margin-right: var(--space-2); font-size: 0.9rem; }
     .cerrar-sesion,
     app-theme-toggle { --mdc-text-button-label-text-color: var(--on-brand); --mat-icon-button-icon-color: var(--on-brand); color: var(--on-brand); }
-    .contenido { padding: var(--space-5); }
-    .accesos { display: flex; flex-wrap: wrap; gap: var(--space-3); margin: var(--space-4) 0; }
+
+    /* Celular: el nombre del usuario baja al contenido y "Cerrar sesion" pasa a icono,
+       así la barra solo lleva título, tema y salir. */
+    .usuario, .cerrar-sesion:not(.cerrar-sesion--icono) { display: none; }
+    .sesion { margin: 0 0 var(--space-4); color: var(--ink-muted); overflow-wrap: anywhere; }
+    .accesos { display: grid; gap: var(--space-3); margin: var(--space-4) 0; }
+    .accesos button { width: 100%; justify-content: flex-start; }
+
+    @media (min-width: 720px) {
+      .usuario { display: inline; margin-right: var(--space-2); font-size: 0.9rem; }
+      .cerrar-sesion:not(.cerrar-sesion--icono) { display: inline-flex; }
+      .cerrar-sesion--icono, .sesion { display: none; }
+      .accesos { display: flex; flex-wrap: wrap; }
+      .accesos button { width: auto; }
+    }
   `]
 })
 export class DashboardComponent {

@@ -31,8 +31,7 @@ import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading
     MatSlideToggleModule,
     LoadingSpinnerComponent
   ],
-  templateUrl: './supervisor-list.component.html',
-  styleUrl: './supervisor-list.component.scss'
+  templateUrl: './supervisor-list.component.html'
 })
 export class SupervisorListComponent {
   private readonly usuarioService = inject(UsuarioService);

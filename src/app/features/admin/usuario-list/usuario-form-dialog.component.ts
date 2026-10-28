@@ -70,7 +70,7 @@ interface ModuloPermisos {
         </mat-form-field>
 
         <mat-form-field appearance="outline">
-          <mat-label>{{ esEdicion ? 'Nueva contrasena (vacio = no cambiar)' : 'Contrasena (min. 8 caracteres)' }}</mat-label>
+          <mat-label>{{ esEdicion ? 'Nueva contrasena (opcional)' : 'Contrasena (min. 8 caracteres)' }}</mat-label>
           <input matInput type="password" formControlName="password" autocomplete="new-password" />
           @if (form.get('password')?.hasError('minlength')) {
             <mat-error>Minimo 8 caracteres</mat-error>
@@ -124,7 +124,7 @@ interface ModuloPermisos {
     </mat-dialog-actions>
   `,
   styles: [`
-    .form-grid { display: flex; flex-direction: column; gap: 8px; min-width: 360px; padding-top: 8px; }
+    .form-grid { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
     .cabecera-permisos { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
     h3 { margin: 0; }
     .modulo { margin: 8px 0 12px; }

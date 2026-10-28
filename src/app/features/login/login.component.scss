@@ -1,38 +1,258 @@
-.login-container {
-  position: relative;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  padding: var(--space-4);
-  background: var(--surface);
+// Login de BetaApp. Solo usa tokens de beta-tokens.css: ningún color va fijo.
+// Móvil primero (franja de marca + hoja de formulario); desde 840px pasa a
+// dos columnas. La franja de marca vive en app-login-marca y toma sus colores
+// de las variables --banda-* que se definen aquí según el tema.
+
+:host {
+  display: block;
 }
 
-.tema-toggle {
+.login {
+  --alto-control: var(--touch-min);
+  --banda-fondo: var(--brand);
+  --banda-texto: var(--on-brand);
+  --banda-sutil: var(--brand-soft);
+  --motivo-punto: var(--accent-soft);
+  --ancho-borde: 1.5px;
+  --panel-borde: 1px solid var(--hairline);
+  --panel-sombra: var(--shadow-card);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+// Selector de tema: sobre la franja en móvil; sobre el fondo claro en escritorio.
+.cambio-tema {
+  --sw-tinta: var(--banda-texto);
+  --sw-papel: var(--banda-fondo);
   position: absolute;
   top: var(--space-4);
   right: var(--space-4);
 }
 
-.login-card {
-  width: 100%;
-  max-width: 400px;
+// ── Hoja del formulario ─────────────────────────────────────────────────────
+.panel {
+  position: relative;
+  flex: 1 1 auto;
+  margin-top: -24px;
+  padding: var(--space-6) var(--space-4) var(--space-7);
+  border: var(--panel-borde);
+  border-bottom: 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   background: var(--surface-raised);
+  box-shadow: var(--panel-sombra);
 }
 
-.full-width {
+.formulario {
   width: 100%;
-  margin-bottom: var(--space-2);
+  max-width: 440px;
+  margin: 0 auto;
 }
 
-.error-message {
+.formulario__titulo {
+  margin: 0;
+  font: 600 1.5rem/1.875rem var(--font-display);
+}
+
+.formulario__ayuda {
+  margin: var(--space-1) 0 0;
+  color: var(--ink-muted);
+}
+
+.formulario__campos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+}
+
+// ── Campos ──────────────────────────────────────────────────────────────────
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.campo__etiqueta {
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.25rem;
+}
+
+.campo__control {
+  position: relative;
   display: flex;
   align-items: center;
+}
+
+.campo__icono {
+  position: absolute;
+  left: 14px;
+  color: var(--ink-muted);
+  pointer-events: none;
+}
+
+.campo__icono,
+.campo__alternar svg,
+.campo__error svg,
+.alerta svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.campo__entrada {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--alto-control);
+  padding: 0 var(--space-4) 0 44px;
+  border: var(--ancho-borde) solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--ink);
+  font: 400 1.125rem/1.625rem var(--font-sans);
+
+  &::placeholder {
+    color: var(--ink-muted);
+    opacity: 1;
+  }
+}
+
+.campo__entrada--clave {
+  padding-right: 124px;
+}
+
+.campo--error .campo__entrada {
+  border-width: 2px;
+  border-color: var(--danger);
+}
+
+.campo__alternar {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--brand);
+  font: 700 0.875rem/1.25rem var(--font-sans);
+  cursor: pointer;
+}
+
+.campo__error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  color: var(--on-danger-soft);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.alerta {
+  display: flex;
+  align-items: flex-start;
   gap: var(--space-2);
-  margin: var(--space-2) 0;
+  margin: 0;
   padding: var(--space-3) var(--space-4);
+  border: 2px solid var(--danger);
   border-radius: var(--radius-md);
   background: var(--danger-soft);
   color: var(--on-danger-soft);
-  font-size: 0.9375rem;
+
+  svg {
+    margin-top: 2px;
+  }
+}
+
+// ── Botón principal (mat-flat-button con el alto táctil del sistema) ────────
+.accion {
+  --mdc-filled-button-container-shape: var(--radius-md);
+  width: 100%;
+  margin-top: var(--space-2);
+  font-size: 1rem;
+  font-weight: 700;
+
+  &[aria-disabled='true'] {
+    cursor: progress;
+  }
+
+  mat-spinner {
+    --mdc-circular-progress-active-indicator-color: var(--on-brand);
+  }
+}
+
+.accion__contenido {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+// ── Temas: solo cambian variables ─────────────────────────────────────────
+:host-context([data-theme='dark']) .login {
+  --banda-fondo: var(--brand-soft);
+  --banda-texto: var(--ink);
+  --banda-sutil: var(--on-brand-soft);
+  --motivo-punto: var(--accent);
+  --panel-sombra: none;
+}
+
+:host-context([data-theme='planta']) .login {
+  --alto-control: var(--touch-planta);
+  --ancho-borde: 2px;
+  --panel-borde: 2px solid var(--border);
+  --panel-sombra: none;
+}
+
+// ── Escritorio: marca a la izquierda, formulario a la derecha ──────────────
+@media (min-width: 840px) {
+  .login {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  // Sobre el fondo claro el selector vuelve a sus colores por defecto.
+  .cambio-tema {
+    --sw-tinta: var(--brand);
+    --sw-papel: var(--on-brand);
+    top: var(--space-5);
+    right: clamp(var(--space-4), 3vw, var(--space-6));
+  }
+
+  .panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0;
+    padding: 96px var(--space-5) var(--space-7);
+    border: 0;
+    border-radius: 0;
+    background: var(--surface);
+    box-shadow: none;
+  }
+
+  .formulario {
+    padding: calc(var(--space-6) + var(--space-2));
+    border: var(--panel-borde);
+    border-radius: var(--radius-lg);
+    background: var(--surface-raised);
+    box-shadow: var(--panel-sombra);
+  }
 }

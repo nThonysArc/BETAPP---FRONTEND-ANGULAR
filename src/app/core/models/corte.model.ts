@@ -2,7 +2,8 @@ export interface CorteDetalle {
   clienteUuid: string | null;
   maquinaId: number;
   maquinaNombre: string | null;
-  maquinaKatoId: number;
+  /** Null en productos sin katos (Vid). */
+  maquinaKatoId: number | null;
   katoNombre: string | null;
   variedadId: number;
   variedadNombre: string | null;

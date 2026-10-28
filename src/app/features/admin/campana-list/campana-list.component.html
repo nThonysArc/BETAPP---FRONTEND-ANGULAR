@@ -25,35 +25,35 @@
   @if (cargando()) {
     <app-loading-spinner mensaje="Cargando campanas..." />
   } @else {
-    <table mat-table [dataSource]="campanas()" class="tabla">
+    <table mat-table [dataSource]="campanas()" class="tabla tabla-apilada">
       <ng-container matColumnDef="nombre">
         <th mat-header-cell *matHeaderCellDef>Nombre</th>
-        <td mat-cell *matCellDef="let c">{{ c.nombre }}</td>
+        <td mat-cell *matCellDef="let c" data-label="Nombre" data-titulo>{{ c.nombre }}</td>
       </ng-container>
 
       <ng-container matColumnDef="producto">
         <th mat-header-cell *matHeaderCellDef>Producto</th>
-        <td mat-cell *matCellDef="let c">{{ c.productoNombre }}</td>
+        <td mat-cell *matCellDef="let c" data-label="Producto">{{ c.productoNombre }}</td>
       </ng-container>
 
       <ng-container matColumnDef="anio">
         <th mat-header-cell *matHeaderCellDef>Anio</th>
-        <td mat-cell *matCellDef="let c">{{ c.anio }}</td>
+        <td mat-cell *matCellDef="let c" data-label="Anio">{{ c.anio }}</td>
       </ng-container>
 
       <ng-container matColumnDef="fechaInicio">
         <th mat-header-cell *matHeaderCellDef>Inicio</th>
-        <td mat-cell *matCellDef="let c">{{ c.fechaInicio }}</td>
+        <td mat-cell *matCellDef="let c" data-label="Inicio">{{ c.fechaInicio }}</td>
       </ng-container>
 
       <ng-container matColumnDef="fechaFin">
         <th mat-header-cell *matHeaderCellDef>Fin</th>
-        <td mat-cell *matCellDef="let c">{{ c.fechaFin ?? '-' }}</td>
+        <td mat-cell *matCellDef="let c" data-label="Fin">{{ c.fechaFin ?? '-' }}</td>
       </ng-container>
 
       <ng-container matColumnDef="activa">
         <th mat-header-cell *matHeaderCellDef>Estado</th>
-        <td mat-cell *matCellDef="let c">
+        <td mat-cell *matCellDef="let c" data-label="Estado">
           <mat-chip [color]="c.activa ? 'primary' : undefined" [highlighted]="c.activa">
             {{ c.activa ? 'Activa' : 'Inactiva' }}
           </mat-chip>
@@ -62,7 +62,7 @@
 
       <ng-container matColumnDef="acciones">
         <th mat-header-cell *matHeaderCellDef>Acciones</th>
-        <td mat-cell *matCellDef="let c">
+        <td mat-cell *matCellDef="let c" data-acciones>
           <button mat-icon-button (click)="verProcesoDeHoy(c)" title="Ver proceso de hoy">
             <mat-icon>today</mat-icon>
           </button>

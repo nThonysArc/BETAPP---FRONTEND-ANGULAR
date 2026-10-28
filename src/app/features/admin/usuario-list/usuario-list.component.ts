@@ -45,34 +45,34 @@ import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading
       @if (cargando()) {
         <app-loading-spinner mensaje="Cargando usuarios..." />
       } @else {
-        <table mat-table [dataSource]="usuarios()" class="tabla">
+        <table mat-table [dataSource]="usuarios()" class="tabla tabla-apilada">
           <ng-container matColumnDef="nombre">
             <th mat-header-cell *matHeaderCellDef>Nombre</th>
-            <td mat-cell *matCellDef="let u">{{ u.nombreCompleto }}</td>
+            <td mat-cell *matCellDef="let u" data-label="Nombre" data-titulo>{{ u.nombreCompleto }}</td>
           </ng-container>
           <ng-container matColumnDef="email">
             <th mat-header-cell *matHeaderCellDef>Acceso</th>
-            <td mat-cell *matCellDef="let u">{{ u.puedeIniciarSesion ? u.email : 'Sin acceso al sistema' }}</td>
+            <td mat-cell *matCellDef="let u" data-label="Acceso">{{ u.puedeIniciarSesion ? u.email : 'Sin acceso al sistema' }}</td>
           </ng-container>
           <ng-container matColumnDef="rol">
             <th mat-header-cell *matHeaderCellDef>Rol</th>
-            <td mat-cell *matCellDef="let u">{{ u.rol }}</td>
+            <td mat-cell *matCellDef="let u" data-label="Rol">{{ u.rol }}</td>
           </ng-container>
           <ng-container matColumnDef="permisos">
             <th mat-header-cell *matHeaderCellDef>Permisos</th>
-            <td mat-cell *matCellDef="let u">
+            <td mat-cell *matCellDef="let u" data-label="Permisos">
               {{ u.rol === 'SUPER_ADMIN' ? 'Todos' : u.permisos.length + ' de ' + (catalogo()?.permisos?.length ?? '-') }}
             </td>
           </ng-container>
           <ng-container matColumnDef="activo">
             <th mat-header-cell *matHeaderCellDef>Estado</th>
-            <td mat-cell *matCellDef="let u">
+            <td mat-cell *matCellDef="let u" data-label="Estado">
               <mat-chip [highlighted]="u.activo">{{ u.activo ? 'Activo' : 'Inactivo' }}</mat-chip>
             </td>
           </ng-container>
           <ng-container matColumnDef="acciones">
             <th mat-header-cell *matHeaderCellDef></th>
-            <td mat-cell *matCellDef="let u">
+            <td mat-cell *matCellDef="let u" data-acciones>
               <button mat-icon-button (click)="abrirFormulario(u)" title="Editar y ver permisos">
                 <mat-icon>edit</mat-icon>
               </button>
@@ -84,12 +84,7 @@ import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading
         </table>
       }
     </div>
-  `,
-  styles: [`
-    .contenido { padding: 24px; }
-    .acciones-header { margin-bottom: 16px; }
-    .tabla { width: 100%; }
-  `]
+  `
 })
 export class UsuarioListComponent {
   private readonly servicio = inject(UsuarioAdminService);

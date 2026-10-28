@@ -1,20 +1,7 @@
-.contenido {
-  padding: 24px;
-}
-
-.tabla {
-  width: 100%;
-}
-
 .fila-clickeable {
   cursor: pointer;
 }
 
 .fila-clickeable:hover {
   background-color: var(--surface-sunken);
-}
-
-.vacio {
-  color: var(--ink-muted);
-  margin-top: 16px;
 }

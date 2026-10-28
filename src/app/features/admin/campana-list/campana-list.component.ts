@@ -35,8 +35,7 @@ import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading
     MatSlideToggleModule,
     LoadingSpinnerComponent
   ],
-  templateUrl: './campana-list.component.html',
-  styleUrl: './campana-list.component.scss'
+  templateUrl: './campana-list.component.html'
 })
 export class CampanaListComponent {
   protected readonly auth = inject(AuthService);

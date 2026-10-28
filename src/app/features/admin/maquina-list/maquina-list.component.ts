@@ -32,8 +32,7 @@ import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading
     MatSlideToggleModule,
     LoadingSpinnerComponent
   ],
-  templateUrl: './maquina-list.component.html',
-  styleUrl: './maquina-list.component.scss'
+  templateUrl: './maquina-list.component.html'
 })
 export class MaquinaListComponent {
   private readonly maquinaService = inject(MaquinaService);

@@ -29,10 +29,17 @@
     @if (!hayIngresoRegistrado()) {
       <div class="aviso-sin-ingreso">
         <mat-icon>info</mat-icon>
-        <span>
-          Aun no se ha registrado el ingreso de materia prima hoy, asi que el peso total
-          no se calcula automaticamente - debes ingresarlo manualmente.
-        </span>
+        @if (esVid()) {
+          <span>
+            Aun no se ha registrado el ingreso de materia prima hoy: la proyeccion y el stock
+            del reporte saldran en 0 hasta que se registre.
+          </span>
+        } @else {
+          <span>
+            Aun no se ha registrado el ingreso de materia prima hoy, asi que el peso total
+            no se calcula automaticamente - debes ingresarlo manualmente.
+          </span>
+        }
       </div>
     }
 
@@ -56,9 +63,13 @@
 
       <mat-card class="seccion">
         <mat-card-header>
-          <mat-card-title>Detalle por maquina / kato / variedad</mat-card-title>
+          <mat-card-title>
+            {{ esVid() ? 'Detalle por modulo / variedad' : 'Detalle por maquina / kato / variedad' }}
+          </mat-card-title>
           <mat-card-subtitle>
-            Cada fila = una maquina, un kato de esa maquina, y la variedad que proceso.
+            {{ esVid()
+              ? 'Cada fila = un modulo, la variedad que selecciono, las jabas y las personas. El rendimiento por persona se calcula solo.'
+              : 'Cada fila = una maquina, un kato de esa maquina, y la variedad que proceso.' }}
           </mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
@@ -66,7 +77,7 @@
             @for (grupo of detalles.controls; track $index; let i = $index) {
               <div [formGroupName]="i" class="fila-detalle">
                 <mat-form-field appearance="outline" class="campo-maquina">
-                  <mat-label>Maquina</mat-label>
+                  <mat-label>{{ esVid() ? 'Modulo' : 'Maquina' }}</mat-label>
                   <mat-select formControlName="maquinaId">
                     @for (m of maquinasDisponibles(); track m.id) {
                       <mat-option [value]="m.id">{{ m.nombre }}</mat-option>
@@ -77,17 +88,20 @@
                   }
                 </mat-form-field>
 
-                <mat-form-field appearance="outline" class="campo-kato">
-                  <mat-label>Kato</mat-label>
-                  <mat-select formControlName="maquinaKatoId">
-                    @for (k of katosDisponiblesPara(grupo.get('maquinaId')?.value); track k.id) {
-                      <mat-option [value]="k.id">{{ k.nombre }}</mat-option>
+                @if (!esVid()) {
+                  <mat-form-field appearance="outline" class="campo-kato">
+                    <mat-label>Kato</mat-label>
+                    <mat-select formControlName="maquinaKatoId">
+                      @for (k of katosDisponiblesPara(grupo.get('maquinaId')?.value); track k.id) {
+                        <mat-option [value]="k.id">{{ k.nombre }}</mat-option>
+                      }
+                    </mat-select>
+                    @if (grupo.get('maquinaKatoId')?.hasError('required') && grupo.get('maquinaKatoId')?.touched) {
+                      <mat-error>Requerido</mat-error>
                     }
-                  </mat-select>
-                  @if (grupo.get('maquinaKatoId')?.hasError('required') && grupo.get('maquinaKatoId')?.touched) {
-                    <mat-error>Requerido</mat-error>
-                  }
-                </mat-form-field>
+                  </mat-form-field>
+
+                }
 
                 <mat-form-field appearance="outline" class="campo-variedad">
                   <mat-label>Variedad</mat-label>
@@ -109,29 +123,40 @@
                   }
                 </mat-form-field>
 
-                <mat-form-field appearance="outline" class="campo-numero">
-                  <mat-label>Peso total (kg)</mat-label>
-                  <input matInput type="number" step="0.1" formControlName="pesoTotal" />
-                  @if (grupo.get('pesoTotal')?.hasError('min') && grupo.get('pesoTotal')?.touched) {
-                    <mat-error>No puede ser negativo</mat-error>
-                  }
-                </mat-form-field>
+                @if (!esVid()) {
+                  <mat-form-field appearance="outline" class="campo-numero">
+                    <mat-label>Peso total (kg)</mat-label>
+                    <input matInput type="number" step="0.1" formControlName="pesoTotal" />
+                    @if (grupo.get('pesoTotal')?.hasError('min') && grupo.get('pesoTotal')?.touched) {
+                      <mat-error>No puede ser negativo</mat-error>
+                    }
+                  </mat-form-field>
+
+                }
 
                 <mat-form-field appearance="outline" class="campo-numero-chico">
-                  <mat-label>Empacadores</mat-label>
+                  <mat-label>{{ esVid() ? 'Personas' : 'Empacadores' }}</mat-label>
                   <input matInput type="number" formControlName="empacadores" />
                   @if (grupo.get('empacadores')?.hasError('min') && grupo.get('empacadores')?.touched) {
                     <mat-error>No puede ser negativo</mat-error>
                   }
                 </mat-form-field>
 
-                <mat-form-field appearance="outline" class="campo-numero">
-                  <mat-label>Kg / empacador</mat-label>
-                  <input matInput type="number" step="0.1" formControlName="kgPorEmpacador" />
-                  @if (grupo.get('kgPorEmpacador')?.hasError('min') && grupo.get('kgPorEmpacador')?.touched) {
-                    <mat-error>No puede ser negativo</mat-error>
-                  }
-                </mat-form-field>
+                @if (!esVid()) {
+                  <mat-form-field appearance="outline" class="campo-numero">
+                    <mat-label>Kg / empacador</mat-label>
+                    <input matInput type="number" step="0.1" formControlName="kgPorEmpacador" />
+                    @if (grupo.get('kgPorEmpacador')?.hasError('min') && grupo.get('kgPorEmpacador')?.touched) {
+                      <mat-error>No puede ser negativo</mat-error>
+                    }
+                  </mat-form-field>
+
+                } @else {
+                  <div class="campo-rendimiento" title="Rendimiento por persona = jabas / personas">
+                    <span class="rend-etiqueta">Rend / persona</span>
+                    <strong>{{ rendimiento(grupo) ?? '—' }}</strong>
+                  </div>
+                }
 
                 <button mat-icon-button type="button" (click)="eliminarDetalle(i)" title="Eliminar fila">
                   <mat-icon>delete</mat-icon>
@@ -144,6 +169,17 @@
             <mat-icon>add</mat-icon>
             Agregar fila
           </button>
+
+          @if (avisosVid().length > 0) {
+            <div class="avisos-vid" role="status">
+              <mat-icon>warning</mat-icon>
+              <ul>
+                @for (aviso of avisosVid(); track aviso) {
+                  <li>{{ aviso }}</li>
+                }
+              </ul>
+            </div>
+          }
         </mat-card-content>
       </mat-card>
 
@@ -203,7 +239,7 @@
                 </mat-select>
               </mat-form-field>
               <mat-form-field appearance="outline" class="campo-observacion-maquina">
-                <mat-label>Observacion de {{ m.nombre }} (opcional)</mat-label>
+                <mat-label>Observacion (opcional)</mat-label>
                 <textarea
                   matInput
                   rows="2"
