@@ -1,0 +1,502 @@
+diff --git a/src/app/core/models/advertencia.model.ts b/src/app/core/models/advertencia.model.ts
+new file mode 100644
+index 0000000..c8280fb
+--- /dev/null
++++ b/src/app/core/models/advertencia.model.ts
+@@ -0,0 +1,12 @@
++/**
++ * Hallazgo de consistencia del avance por hora (Vid). Nunca bloquea el guardado:
++ * avisa para que el supervisor revise el dato antes de compartir el reporte.
++ */
++export interface Advertencia {
++  /** Numero de hora (1..n) o null si aplica a todo el dia. */
++  hora: number | null;
++  /** Modulo afectado o null si aplica a toda la hora / dia. */
++  modulo: string | null;
++  codigo: string;
++  mensaje: string;
++}
+diff --git a/src/app/core/models/corte.model.ts b/src/app/core/models/corte.model.ts
+index 7ba6027..84be9fd 100644
+--- a/src/app/core/models/corte.model.ts
++++ b/src/app/core/models/corte.model.ts
+@@ -2,7 +2,8 @@ export interface CorteDetalle {
+   clienteUuid: string | null;
+   maquinaId: number;
+   maquinaNombre: string | null;
+-  maquinaKatoId: number;
++  /** Null en productos sin katos (Vid). */
++  maquinaKatoId: number | null;
+   katoNombre: string | null;
+   variedadId: number;
+   variedadNombre: string | null;
+diff --git a/src/app/core/models/producto.model.ts b/src/app/core/models/producto.model.ts
+index 9fc586a..e54fdb2 100644
+--- a/src/app/core/models/producto.model.ts
++++ b/src/app/core/models/producto.model.ts
+@@ -2,5 +2,7 @@ export interface Producto {
+   id: number;
+   nombre: string;
+   unidadMedida: string;
++  /** Formato del reporte de avance por hora: ARANDANO (maquina/kato) o VID (modulo/personas). */
++  plantillaReporte: 'ARANDANO' | 'VID';
+   activo: boolean;
+ }
+diff --git a/src/app/core/services/reporte.service.ts b/src/app/core/services/reporte.service.ts
+index fa081a7..5d2f833 100644
+--- a/src/app/core/services/reporte.service.ts
++++ b/src/app/core/services/reporte.service.ts
+@@ -2,11 +2,17 @@ import { Injectable, inject } from '@angular/core';
+ import { HttpClient } from '@angular/common/http';
+ import { Observable } from 'rxjs';
+ import { environment } from '../../../environments/environment';
++import { Advertencia } from '../models/advertencia.model';
+ 
+ @Injectable({ providedIn: 'root' })
+ export class ReporteService {
+   private readonly http = inject(HttpClient);
+ 
++  /** Advertencias de consistencia del dia (lista vacia si el producto no usa la plantilla Vid). */
++  obtenerAdvertencias(procesoDiarioId: number): Observable<Advertencia[]> {
++    return this.http.get<Advertencia[]>(`${environment.apiUrl}/procesos/${procesoDiarioId}/advertencias`);
++  }
++
+   obtenerImagenReporte(procesoDiarioId: number): Observable<Blob> {
+     return this.http.get(`${environment.apiUrl}/procesos/${procesoDiarioId}/reporte-imagen`, {
+       responseType: 'blob'
+diff --git a/src/app/features/proceso/corte-form/corte-form.component.html b/src/app/features/proceso/corte-form/corte-form.component.html
+index 7903a1e..eb40b5f 100644
+--- a/src/app/features/proceso/corte-form/corte-form.component.html
++++ b/src/app/features/proceso/corte-form/corte-form.component.html
+@@ -29,10 +29,17 @@
+     @if (!hayIngresoRegistrado()) {
+       <div class="aviso-sin-ingreso">
+         <mat-icon>info</mat-icon>
+-        <span>
+-          Aun no se ha registrado el ingreso de materia prima hoy, asi que el peso total
+-          no se calcula automaticamente - debes ingresarlo manualmente.
+-        </span>
++        @if (esVid()) {
++          <span>
++            Aun no se ha registrado el ingreso de materia prima hoy: la proyeccion y el stock
++            del reporte saldran en 0 hasta que se registre.
++          </span>
++        } @else {
++          <span>
++            Aun no se ha registrado el ingreso de materia prima hoy, asi que el peso total
++            no se calcula automaticamente - debes ingresarlo manualmente.
++          </span>
++        }
+       </div>
+     }
+ 
+@@ -56,9 +63,13 @@
+ 
+       <mat-card class="seccion">
+         <mat-card-header>
+-          <mat-card-title>Detalle por maquina / kato / variedad</mat-card-title>
++          <mat-card-title>
++            {{ esVid() ? 'Detalle por modulo / variedad' : 'Detalle por maquina / kato / variedad' }}
++          </mat-card-title>
+           <mat-card-subtitle>
+-            Cada fila = una maquina, un kato de esa maquina, y la variedad que proceso.
++            {{ esVid()
++              ? 'Cada fila = un modulo, la variedad que selecciono, las jabas y las personas. El rendimiento por persona se calcula solo.'
++              : 'Cada fila = una maquina, un kato de esa maquina, y la variedad que proceso.' }}
+           </mat-card-subtitle>
+         </mat-card-header>
+         <mat-card-content>
+@@ -66,7 +77,7 @@
+             @for (grupo of detalles.controls; track $index; let i = $index) {
+               <div [formGroupName]="i" class="fila-detalle">
+                 <mat-form-field appearance="outline" class="campo-maquina">
+-                  <mat-label>Maquina</mat-label>
++                  <mat-label>{{ esVid() ? 'Modulo' : 'Maquina' }}</mat-label>
+                   <mat-select formControlName="maquinaId">
+                     @for (m of maquinasDisponibles(); track m.id) {
+                       <mat-option [value]="m.id">{{ m.nombre }}</mat-option>
+@@ -77,17 +88,20 @@
+                   }
+                 </mat-form-field>
+ 
+-                <mat-form-field appearance="outline" class="campo-kato">
+-                  <mat-label>Kato</mat-label>
+-                  <mat-select formControlName="maquinaKatoId">
+-                    @for (k of katosDisponiblesPara(grupo.get('maquinaId')?.value); track k.id) {
+-                      <mat-option [value]="k.id">{{ k.nombre }}</mat-option>
++                @if (!esVid()) {
++                  <mat-form-field appearance="outline" class="campo-kato">
++                    <mat-label>Kato</mat-label>
++                    <mat-select formControlName="maquinaKatoId">
++                      @for (k of katosDisponiblesPara(grupo.get('maquinaId')?.value); track k.id) {
++                        <mat-option [value]="k.id">{{ k.nombre }}</mat-option>
++                      }
++                    </mat-select>
++                    @if (grupo.get('maquinaKatoId')?.hasError('required') && grupo.get('maquinaKatoId')?.touched) {
++                      <mat-error>Requerido</mat-error>
+                     }
+-                  </mat-select>
+-                  @if (grupo.get('maquinaKatoId')?.hasError('required') && grupo.get('maquinaKatoId')?.touched) {
+-                    <mat-error>Requerido</mat-error>
+-                  }
+-                </mat-form-field>
++                  </mat-form-field>
++
++                }
+ 
+                 <mat-form-field appearance="outline" class="campo-variedad">
+                   <mat-label>Variedad</mat-label>
+@@ -109,29 +123,40 @@
+                   }
+                 </mat-form-field>
+ 
+-                <mat-form-field appearance="outline" class="campo-numero">
+-                  <mat-label>Peso total (kg)</mat-label>
+-                  <input matInput type="number" step="0.1" formControlName="pesoTotal" />
+-                  @if (grupo.get('pesoTotal')?.hasError('min') && grupo.get('pesoTotal')?.touched) {
+-                    <mat-error>No puede ser negativo</mat-error>
+-                  }
+-                </mat-form-field>
++                @if (!esVid()) {
++                  <mat-form-field appearance="outline" class="campo-numero">
++                    <mat-label>Peso total (kg)</mat-label>
++                    <input matInput type="number" step="0.1" formControlName="pesoTotal" />
++                    @if (grupo.get('pesoTotal')?.hasError('min') && grupo.get('pesoTotal')?.touched) {
++                      <mat-error>No puede ser negativo</mat-error>
++                    }
++                  </mat-form-field>
++
++                }
+ 
+                 <mat-form-field appearance="outline" class="campo-numero-chico">
+-                  <mat-label>Empacadores</mat-label>
++                  <mat-label>{{ esVid() ? 'Personas' : 'Empacadores' }}</mat-label>
+                   <input matInput type="number" formControlName="empacadores" />
+                   @if (grupo.get('empacadores')?.hasError('min') && grupo.get('empacadores')?.touched) {
+                     <mat-error>No puede ser negativo</mat-error>
+                   }
+                 </mat-form-field>
+ 
+-                <mat-form-field appearance="outline" class="campo-numero">
+-                  <mat-label>Kg / empacador</mat-label>
+-                  <input matInput type="number" step="0.1" formControlName="kgPorEmpacador" />
+-                  @if (grupo.get('kgPorEmpacador')?.hasError('min') && grupo.get('kgPorEmpacador')?.touched) {
+-                    <mat-error>No puede ser negativo</mat-error>
+-                  }
+-                </mat-form-field>
++                @if (!esVid()) {
++                  <mat-form-field appearance="outline" class="campo-numero">
++                    <mat-label>Kg / empacador</mat-label>
++                    <input matInput type="number" step="0.1" formControlName="kgPorEmpacador" />
++                    @if (grupo.get('kgPorEmpacador')?.hasError('min') && grupo.get('kgPorEmpacador')?.touched) {
++                      <mat-error>No puede ser negativo</mat-error>
++                    }
++                  </mat-form-field>
++
++                } @else {
++                  <div class="campo-rendimiento" title="Rendimiento por persona = jabas / personas">
++                    <span class="rend-etiqueta">Rend / persona</span>
++                    <strong>{{ rendimiento(grupo) ?? '—' }}</strong>
++                  </div>
++                }
+ 
+                 <button mat-icon-button type="button" (click)="eliminarDetalle(i)" title="Eliminar fila">
+                   <mat-icon>delete</mat-icon>
+@@ -144,6 +169,17 @@
+             <mat-icon>add</mat-icon>
+             Agregar fila
+           </button>
++
++          @if (avisosVid().length > 0) {
++            <div class="avisos-vid" role="status">
++              <mat-icon>warning</mat-icon>
++              <ul>
++                @for (aviso of avisosVid(); track aviso) {
++                  <li>{{ aviso }}</li>
++                }
++              </ul>
++            </div>
++          }
+         </mat-card-content>
+       </mat-card>
+ 
+diff --git a/src/app/features/proceso/corte-form/corte-form.component.scss b/src/app/features/proceso/corte-form/corte-form.component.scss
+index 239c15a..fd56c94 100644
+--- a/src/app/features/proceso/corte-form/corte-form.component.scss
++++ b/src/app/features/proceso/corte-form/corte-form.component.scss
+@@ -158,3 +158,47 @@
+     }
+   }
+ }
++
++// Rendimiento por persona (solo Vid): dato calculado, no editable.
++.campo-rendimiento {
++  display: flex;
++  flex-direction: column;
++  justify-content: center;
++  flex: 1 1 calc(50% - 4px);
++  min-width: 0;
++  padding: 0 var(--space-2) var(--space-4);
++
++  .rend-etiqueta {
++    color: var(--ink-muted);
++    font-size: 0.8125rem;
++  }
++
++  strong {
++    font-size: 1.125rem;
++    color: var(--ink);
++  }
++}
++
++@media (min-width: 600px) {
++  .campo-rendimiento {
++    flex: 0.8 1 100px;
++  }
++}
++
++// Avisos de consistencia en vivo (no bloquean el guardado).
++.avisos-vid {
++  display: flex;
++  align-items: flex-start;
++  gap: var(--space-2);
++  margin-top: var(--space-3);
++  padding: var(--space-3) var(--space-4);
++  border-radius: var(--radius-md);
++  background-color: var(--warning-soft);
++  color: var(--on-warning-soft);
++  font-size: 0.9rem;
++
++  ul {
++    margin: 0;
++    padding-left: var(--space-4);
++  }
++}
+diff --git a/src/app/features/proceso/corte-form/corte-form.component.ts b/src/app/features/proceso/corte-form/corte-form.component.ts
+index 78560a5..4de9464 100644
+--- a/src/app/features/proceso/corte-form/corte-form.component.ts
++++ b/src/app/features/proceso/corte-form/corte-form.component.ts
+@@ -1,7 +1,7 @@
+ import { Component, inject, signal } from '@angular/core';
+ import { CommonModule } from '@angular/common';
+ import { ActivatedRoute, Router } from '@angular/router';
+-import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
++import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+ import { MatToolbarModule } from '@angular/material/toolbar';
+ import { MatButtonModule } from '@angular/material/button';
+ import { MatIconModule } from '@angular/material/icon';
+@@ -23,12 +23,14 @@ import { MaquinaService } from '../../../core/services/maquina.service';
+ import { MaquinaKatoService } from '../../../core/services/maquina-kato.service';
+ import { UsuarioService } from '../../../core/services/usuario.service';
+ import { VariedadService } from '../../../core/services/variedad.service';
++import { ProductoService } from '../../../core/services/producto.service';
+ import { IngresoMateriaPrimaService } from '../../../core/services/ingreso-materia-prima.service';
+ import { CorteRequest, CorteSupervisor } from '../../../core/models/corte.model';
+ import { UsuarioResumen } from '../../../core/models/usuario.model';
+ import { Maquina } from '../../../core/models/maquina.model';
+ import { MaquinaKato } from '../../../core/models/maquina-kato.model';
+ import { Variedad } from '../../../core/models/variedad.model';
++import { Producto } from '../../../core/models/producto.model';
+ import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading-spinner.component';
+ 
+ @Component({
+@@ -62,6 +64,7 @@ export class CorteFormComponent {
+   private readonly maquinaKatoService = inject(MaquinaKatoService);
+   private readonly usuarioService = inject(UsuarioService);
+   private readonly variedadService = inject(VariedadService);
++  private readonly productoService = inject(ProductoService);
+   private readonly ingresoService = inject(IngresoMateriaPrimaService);
+   private readonly snackBar = inject(MatSnackBar);
+   private readonly route = inject(ActivatedRoute);
+@@ -82,6 +85,9 @@ export class CorteFormComponent {
+   readonly procesoEstado = signal<'ABIERTO' | 'CERRADO' | null>(null);
+   readonly requiereRevision = signal(false);
+ 
++  /** El producto de la campana usa la plantilla Vid: modulo + personas + jabas (sin kato ni kg). */
++  readonly esVid = signal(false);
++
+   private campanaId: number | null = null;
+ 
+   /** variedadId -> peso promedio por jaba, segun el ultimo ingreso reportado. */
+@@ -232,6 +238,7 @@ export class CorteFormComponent {
+           next: (campana) => {
+             const datosBase$ = forkJoin({
+               ingresos: this.ingresoService.listar(this.procesoDiarioId),
++              productos: this.productoService.listar().pipe(catchError(() => of([] as Producto[]))),
+               variedades: this.variedadService.listarPorProducto(campana.productoId),
+               maquinas: this.maquinaService.listarPorCampana(proceso.campanaId),
+               supervisores: this.usuarioService.listarSupervisores().pipe(
+@@ -245,7 +252,10 @@ export class CorteFormComponent {
+ 
+             forkJoin({ base: datosBase$, corte: contenidoCorte$ }).subscribe({
+               next: ({ base, corte }) => {
+-                const { ingresos, variedades, maquinas, supervisores } = base;
++                const { ingresos, variedades, maquinas, supervisores, productos } = base;
++
++                // Debe fijarse ANTES de crear las filas: define si el kato es obligatorio.
++                this.esVid.set(productos.find((p) => p.id === campana.productoId)?.plantillaReporte === 'VID');
+ 
+                 this.variedadesDisponibles.set(variedades);
+                 this.maquinasDisponibles.set(maquinas);
+@@ -332,7 +342,7 @@ export class CorteFormComponent {
+   ): void {
+     const grupo = this.fb.group({
+       maquinaId: [maquinaId, Validators.required],
+-      maquinaKatoId: [maquinaKatoId, Validators.required],
++      maquinaKatoId: [maquinaKatoId, this.esVid() ? [] : Validators.required],
+       variedadId: [variedadId, Validators.required],
+       jabas: [jabas, [Validators.required, Validators.min(0)]],
+       pesoTotal: [pesoTotal, [Validators.required, Validators.min(0)]],
+@@ -378,6 +388,54 @@ export class CorteFormComponent {
+     grupo.get('empacadores')?.valueChanges.subscribe(recalcularKgPorEmpacador);
+   }
+ 
++  /** Rend/persona = jabas / personas (siempre calculado, igual que en el reporte). */
++  rendimiento(grupo: AbstractControl): number | null {
++    const jabas = Number(grupo.get('jabas')?.value) || 0;
++    const personas = Number(grupo.get('empacadores')?.value) || 0;
++    return personas > 0 ? Math.round(jabas / personas) : null;
++  }
++
++  /** Minutos entre "Desde" y "Hasta" (null si falta alguno o el rango es invalido). */
++  duracionMinutos(): number | null {
++    const { horaInicio, horaFin } = this.form.getRawValue();
++    if (!horaInicio || !horaFin) return null;
++    const [h1, m1] = horaInicio.split(':').map(Number);
++    const [h2, m2] = horaFin.split(':').map(Number);
++    const minutos = h2 * 60 + m2 - (h1 * 60 + m1);
++    return minutos > 0 ? minutos : null;
++  }
++
++  /**
++   * Avisos en vivo (solo Vid). No bloquean el guardado: son las mismas reglas que valida
++   * el servidor, mostradas antes de guardar para corregir el dato a tiempo.
++   */
++  avisosVid(): string[] {
++    if (!this.esVid()) return [];
++    const avisos: string[] = [];
++
++    const minutos = this.duracionMinutos();
++    if (minutos !== null && (minutos < 55 || minutos > 65)) {
++      avisos.push(`Esta hora dura ${minutos} min; lo normal es 60. Verifica el horario.`);
++    }
++
++    this.detalles.controls.forEach((grupo) => {
++      const maquinaId = grupo.get('maquinaId')?.value as number | null;
++      if (maquinaId === null || maquinaId === undefined || this.almuerzoDe(maquinaId)) return;
++
++      const nombre = this.maquinasDisponibles().find((m) => m.id === maquinaId)?.nombre ?? `Modulo ${maquinaId}`;
++      const jabas = Number(grupo.get('jabas')?.value) || 0;
++      const personas = Number(grupo.get('empacadores')?.value) || 0;
++
++      if (jabas > 0 && personas === 0) {
++        avisos.push(`${nombre}: hay jabas pero 0 personas.`);
++      }
++      if (personas > 0 && jabas === 0 && !this.observacionDe(maquinaId).trim()) {
++        avisos.push(`${nombre}: hay personas pero 0 jabas. Si fue un paro, anotalo en la observacion.`);
++      }
++    });
++    return avisos;
++  }
++
+   eliminarDetalle(index: number): void {
+     this.detalles.removeAt(index);
+   }
+diff --git a/src/app/features/proceso/proceso-detalle/proceso-detalle.component.html b/src/app/features/proceso/proceso-detalle/proceso-detalle.component.html
+index 40d650f..1d64c83 100644
+--- a/src/app/features/proceso/proceso-detalle/proceso-detalle.component.html
++++ b/src/app/features/proceso/proceso-detalle/proceso-detalle.component.html
+@@ -62,6 +62,17 @@
+       }
+     </div>
+ 
++    @if (advertencias().length > 0) {
++      <section class="advertencias" aria-label="Advertencias de consistencia">
++        <h3><mat-icon>warning</mat-icon> Revisar antes de compartir el reporte ({{ advertencias().length }})</h3>
++        <ul>
++          @for (a of advertencias(); track $index) {
++            <li>{{ a.mensaje }}</li>
++          }
++        </ul>
++      </section>
++    }
++
+     @if (cargando()) {
+       <app-loading-spinner mensaje="Cargando cortes..." />
+     } @else {
+diff --git a/src/app/features/proceso/proceso-detalle/proceso-detalle.component.scss b/src/app/features/proceso/proceso-detalle/proceso-detalle.component.scss
+index e87527b..7dbf69f 100644
+--- a/src/app/features/proceso/proceso-detalle/proceso-detalle.component.scss
++++ b/src/app/features/proceso/proceso-detalle/proceso-detalle.component.scss
+@@ -32,3 +32,26 @@
+ .fila-clickeable:hover {
+   background-color: var(--surface-sunken);
+ }
++
++// Avisos de consistencia del dia (Vid): informativos, no bloquean nada.
++.advertencias {
++  margin-bottom: var(--space-4);
++  padding: var(--space-3) var(--space-4);
++  border-radius: var(--radius-md);
++  background-color: var(--warning-soft);
++  color: var(--on-warning-soft);
++
++  h3 {
++    display: flex;
++    align-items: center;
++    gap: var(--space-2);
++    margin: 0 0 var(--space-2);
++    font-size: 1rem;
++  }
++
++  ul {
++    margin: 0;
++    padding-left: var(--space-5);
++    font-size: 0.9rem;
++  }
++}
+diff --git a/src/app/features/proceso/proceso-detalle/proceso-detalle.component.ts b/src/app/features/proceso/proceso-detalle/proceso-detalle.component.ts
+index 61da032..577c7d3 100644
+--- a/src/app/features/proceso/proceso-detalle/proceso-detalle.component.ts
++++ b/src/app/features/proceso/proceso-detalle/proceso-detalle.component.ts
+@@ -16,6 +16,7 @@ import { CorteService } from '../../../core/services/corte.service';
+ import { ReporteService } from '../../../core/services/reporte.service';
+ import { ProcesoDiario } from '../../../core/models/proceso-diario.model';
+ import { Corte } from '../../../core/models/corte.model';
++import { Advertencia } from '../../../core/models/advertencia.model';
+ import { toIsoDateString } from '../../../core/utils/date.util';
+ import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-dialog.component';
+ import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading-spinner.component';
+@@ -62,6 +63,8 @@ export class ProcesoDetalleComponent {
+ 
+   readonly proceso = signal<ProcesoDiario | null>(null);
+   readonly cortes = signal<Corte[]>([]);
++  /** Hallazgos de consistencia del dia (solo productos con plantilla Vid). */
++  readonly advertencias = signal<Advertencia[]>([]);
+   readonly cargando = signal(true);
+   readonly buscandoProceso = signal(true);
+   readonly generandoReporte = signal(false);
+@@ -131,6 +134,7 @@ export class ProcesoDetalleComponent {
+       next: (cortes) => {
+         this.cortes.set(cortes);
+         this.cargando.set(false);
++        this.cargarAdvertencias(procesoDiarioId);
+       },
+       error: () => {
+         this.cargando.set(false);
+@@ -139,6 +143,15 @@ export class ProcesoDetalleComponent {
+     });
+   }
+ 
++  /** Es informativo: si falla (o no hay permiso) simplemente no se muestran avisos. */
++  private cargarAdvertencias(procesoDiarioId: number): void {
++    if (!this.auth.tiene('CORTES_VER')) return;
++    this.reporteService.obtenerAdvertencias(procesoDiarioId).subscribe({
++      next: (lista) => this.advertencias.set(lista),
++      error: () => this.advertencias.set([])
++    });
++  }
++
+   nuevoCorte(): void {
+     const proceso = this.proceso();
+     if (!proceso) return;

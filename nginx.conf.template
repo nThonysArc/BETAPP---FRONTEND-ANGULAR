@@ -1,0 +1,28 @@
+server {
+    listen ${PORT};
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+    gzip_min_length 1024;
+
+    # Archivos con hash en el nombre (main-XXXX.js): cache largo e inmutable
+    location ~* \.(?:js|css|woff2?|png|jpg|jpeg|svg|ico)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    # index.html nunca en cache: asi cada despliegue se ve de inmediato
+    location = /index.html {
+        add_header Cache-Control "no-store";
+    }
+
+    # SPA: cualquier ruta de Angular (/procesos/12/avance) cae en index.html
+    location / {
+        try_files $uri $uri/ /index.html;
+        add_header Cache-Control "no-store";
+    }
+}
