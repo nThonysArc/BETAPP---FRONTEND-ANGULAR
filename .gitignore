@@ -40,3 +40,8 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# Skills, agentes y hooks locales de asistentes de IA (no versionar)
+.claude/
+.agents/
+.codex/

@@ -69,16 +69,20 @@
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
-          "configurations": {
-            "production": {
-              "buildTarget": "avance-produccion-frontend:build:production"
-            },
-            "development": {
-              "buildTarget": "avance-produccion-frontend:build:development"
-            }
-          },
-          "defaultConfiguration": "development"
+          "options": {
+             "allowedHosts": [".trycloudflare.com"],
+              "proxyConfig": "proxy.conf.json"
         },
+        "configurations": {
+          "production": {
+            "buildTarget": "avance-produccion-frontend:build:production"
+          },
+          "development": {
+            "buildTarget": "avance-produccion-frontend:build:development"
+          }
+        },
+        "defaultConfiguration": "development"
+      },
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n"
         },
