@@ -94,6 +94,13 @@ export const routes: Routes = [
       )
   },
   {
+    // Avance del dia en vivo (solo lectura): tabla por hora que se actualiza sola
+    path: 'procesos/:procesoId/avance',
+    canActivate: [authGuard, permisoGuard('REPORTE_VER')],
+    loadComponent: () =>
+      import('./features/proceso/avance-vivo/avance-vivo.component').then((m) => m.AvanceVivoComponent)
+  },
+  {
     // Formulario de nuevo corte
     path: 'procesos/:procesoId/cortes/nuevo',
     canActivate: [authGuard, permisoGuard('CORTES_CREAR')],

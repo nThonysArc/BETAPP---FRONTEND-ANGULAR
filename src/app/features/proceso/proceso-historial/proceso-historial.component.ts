@@ -8,6 +8,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
+import { AuthService } from '../../../core/auth/auth.service';
 import { ProcesoDiarioService } from '../../../core/services/proceso-diario.service';
 import { CampanaService } from '../../../core/services/campana.service';
 import { ProcesoDiario } from '../../../core/models/proceso-diario.model';
@@ -31,6 +32,7 @@ import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading
   styleUrl: './proceso-historial.component.scss'
 })
 export class ProcesoHistorialComponent {
+  protected readonly auth = inject(AuthService);
   private readonly procesoDiarioService = inject(ProcesoDiarioService);
   private readonly campanaService = inject(CampanaService);
   private readonly snackBar = inject(MatSnackBar);
@@ -67,6 +69,10 @@ export class ProcesoHistorialComponent {
 
   verProceso(proceso: ProcesoDiario): void {
     this.router.navigate(['/procesos/detalle', proceso.id]);
+  }
+
+  verAvance(proceso: ProcesoDiario): void {
+    this.router.navigate(['/procesos', proceso.id, 'avance']);
   }
 
   volver(): void {

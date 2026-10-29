@@ -55,3 +55,14 @@
     font-size: 0.9rem;
   }
 }
+
+// Corte de almuerzo del personal: no es una hora de proceso, no lleva numero.
+.almuerzo {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--on-accent-soft);
+  font-size: 0.8rem;
+  font-weight: 600;
+}

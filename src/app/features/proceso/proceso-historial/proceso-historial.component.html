@@ -32,6 +32,11 @@
       <ng-container matColumnDef="acciones">
         <th mat-header-cell *matHeaderCellDef></th>
         <td mat-cell *matCellDef="let p">
+          @if (auth.tiene('REPORTE_VER')) {
+            <button mat-icon-button (click)="verAvance(p); $event.stopPropagation()" title="Avance en vivo">
+              <mat-icon>monitoring</mat-icon>
+            </button>
+          }
           <button mat-icon-button (click)="verProceso(p)" title="Ver / Editar">
             <mat-icon>visibility</mat-icon>
           </button>

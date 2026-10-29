@@ -1,0 +1,233 @@
+<mat-toolbar color="primary">
+  <button mat-icon-button (click)="volver()" aria-label="Volver">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+  <span>Avance en vivo</span>
+</mat-toolbar>
+
+<div class="contenido">
+  @if (cargando()) {
+    <app-loading-spinner mensaje="Cargando avance..." />
+  } @else if (errorFatal()) {
+    <p class="vacio">{{ errorFatal() }}</p>
+  } @else if (datos()) {
+    @let d = datos()!;
+    <header class="cabecera">
+      <div class="titulos">
+        <h2>{{ avance()?.titulo ?? 'Avance del dia' }}</h2>
+        <p class="fecha">{{ avance()?.fecha | date: 'dd/MM/yyyy' }}</p>
+      </div>
+
+      <div class="estado">
+        <span class="indicador" [class]="estadoConexion()" role="status">
+          <span class="punto" aria-hidden="true"></span>
+          @switch (estadoConexion()) {
+            @case ('en-vivo') { En vivo }
+            @case ('sin-conexion') { Sin conexion, reintentando }
+            @case ('pausa') { En pausa }
+          }
+        </span>
+        @if (haceCuanto()) {
+          <span class="ultima">Actualizado {{ haceCuanto() }}</span>
+        }
+        <mat-chip [highlighted]="d.estadoProceso === 'ABIERTO'" [color]="d.estadoProceso === 'ABIERTO' ? 'primary' : undefined">
+          {{ d.estadoProceso }}
+        </mat-chip>
+      </div>
+
+      <div class="acciones">
+        <button mat-stroked-button (click)="alternarPausa()">
+          <mat-icon>{{ pausado() ? 'play_arrow' : 'pause' }}</mat-icon>
+          {{ pausado() ? 'Reanudar' : 'Pausar' }}
+        </button>
+        <button mat-stroked-button (click)="actualizarAhora()" [disabled]="actualizando()">
+          <mat-icon>refresh</mat-icon>
+          Actualizar
+        </button>
+        <button mat-stroked-button (click)="verImagen()">
+          <mat-icon>image</mat-icon>
+          Imagen (PNG)
+        </button>
+      </div>
+    </header>
+
+    @if (!d.disponible || !avance()) {
+      <section class="aviso">
+        <mat-icon>info</mat-icon>
+        <p>{{ d.mensaje ?? 'La vista en linea no esta disponible para este producto.' }}</p>
+      </section>
+    } @else {
+      @let a = avance()!;
+
+      <!-- Indicadores principales -->
+      <section class="kpis" aria-label="Resumen del dia">
+        <article class="kpi">
+          <span class="kpi-etiqueta">Total a procesar</span>
+          <strong>{{ a.ingresoKilos | number: '1.0-0' }} kg</strong>
+          <span class="kpi-detalle">{{ a.ingresoJabas | number: '1.0-0' }} jabas</span>
+        </article>
+        <article class="kpi kpi-marca">
+          <span class="kpi-etiqueta">Procesado</span>
+          <strong>{{ a.pie.acumuladoKilos | number: '1.0-0' }} kg</strong>
+          <span class="kpi-detalle">{{ a.pie.acumuladoJabas | number: '1.0-0' }} jabas</span>
+        </article>
+        <article class="kpi">
+          <span class="kpi-etiqueta">Stock por procesar</span>
+          <strong>{{ a.pie.stockKilos | number: '1.0-0' }} kg</strong>
+          <span class="kpi-detalle">{{ a.pie.stockJabas | number: '1.0-0' }} jabas</span>
+        </article>
+        <article class="kpi">
+          <span class="kpi-etiqueta">Ultima hora</span>
+          <strong>{{ a.pie.ultimaHoraKilos | number: '1.0-0' }} kg</strong>
+          <span class="kpi-detalle">{{ a.pie.ultimaHoraJabas | number: '1.0-0' }} jabas</span>
+        </article>
+      </section>
+
+      <div class="progreso" role="progressbar" [attr.aria-valuenow]="porcentajeProcesado() | number: '1.0-0'"
+           aria-valuemin="0" aria-valuemax="100" aria-label="Avance sobre el total a procesar">
+        <div class="progreso-barra" [style.width.%]="porcentajeProcesado()"></div>
+      </div>
+      <p class="progreso-texto">{{ porcentajeProcesado() | number: '1.0-1' }}% del total a procesar</p>
+
+      <!-- Total a procesar por variedad -->
+      @if (a.ingresos.length > 0) {
+        <section class="bloque">
+          <h3>Total a procesar</h3>
+          <div class="tabla-scroll">
+            <table class="tabla">
+              <thead><tr><th>Variedad</th><th class="num">Jabas</th><th class="num">Kilos</th></tr></thead>
+              <tbody>
+                @for (i of a.ingresos; track i.variedad) {
+                  <tr><td>{{ i.variedad }}</td><td class="num">{{ i.jabas | number: '1.0-0' }}</td><td class="num">{{ i.kilos | number: '1.0-1' }}</td></tr>
+                }
+              </tbody>
+              <tfoot><tr><td>Total</td><td class="num">{{ a.ingresoJabas | number: '1.0-0' }}</td><td class="num">{{ a.ingresoKilos | number: '1.0-1' }}</td></tr></tfoot>
+            </table>
+          </div>
+        </section>
+      }
+
+      <!-- Horas -->
+      <section class="bloque">
+        <h3>Avance por hora</h3>
+        @if (a.horas.length === 0) {
+          <p class="vacio">Todavia no se registra ninguna hora.</p>
+        }
+        @for (h of horasRecientesPrimero(); track h.inicio + '-' + $index; let primera = $first) {
+          @if (h.pausa) {
+            <div class="hora pausa">
+              <mat-icon>restaurant</mat-icon>
+              ALMUERZO DEL PERSONAL · {{ hora(h.inicio) }} - {{ hora(h.fin) }}
+            </div>
+          } @else {
+            <article class="hora" [class.reciente]="primera">
+              <header class="hora-cab">
+                <h4>
+                  Hora {{ h.numero }}
+                  <span class="rango">{{ hora(h.inicio) }} - {{ hora(h.fin) }}</span>
+                </h4>
+                <div class="hora-totales">
+                  <span><strong>{{ h.kilos | number: '1.0-1' }}</strong> kg</span>
+                  <span><strong>{{ h.jabas | number: '1.0-0' }}</strong> jabas</span>
+                  <span class="acum">Acum. {{ h.acumuladoKilos | number: '1.0-1' }} kg</span>
+                </div>
+              </header>
+
+              <div class="tabla-scroll">
+                <table class="tabla">
+                  <thead>
+                    <tr>
+                      <th>Maquina</th><th>Kato</th><th>Variedad</th>
+                      <th class="num">Jabas</th><th class="num">Peso (kg)</th>
+                      <th class="num">Empac.</th><th class="num">Kg/empac.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (m of h.maquinas; track m.maquinaId) {
+                      @if (m.almuerzo) {
+                        <tr class="fila-almuerzo">
+                          <td>{{ m.maquina }}</td>
+                          <td colspan="6">ALMUERZO DE PERSONAL</td>
+                        </tr>
+                      } @else {
+                        @for (f of m.filas; track $index; let primeraFila = $first) {
+                          <tr>
+                            @if (primeraFila) {
+                              <td [attr.rowspan]="m.filas.length" class="maquina">
+                                <strong>{{ m.maquina }}</strong>
+                                @if (m.supervisor) { <small>{{ m.supervisor }}</small> }
+                              </td>
+                            }
+                            <td>{{ f.kato }}</td>
+                            <td>{{ f.variedad }}</td>
+                            <td class="num">{{ f.jabas | number: '1.0-0' }}</td>
+                            <td class="num">{{ f.peso | number: '1.0-1' }}</td>
+                            <td class="num">{{ f.empacadores }}</td>
+                            <td class="num">{{ f.kgPorEmpacador | number: '1.0-1' }}</td>
+                          </tr>
+                        }
+                        @if (m.observacion) {
+                          <tr class="fila-obs"><td colspan="7">Obs. {{ m.maquina }}: {{ m.observacion }}</td></tr>
+                        }
+                      }
+                    }
+                  </tbody>
+                </table>
+              </div>
+              @if (h.observacionGeneral) {
+                <p class="obs-general"><mat-icon>notes</mat-icon> {{ h.observacionGeneral }}</p>
+              }
+            </article>
+          }
+        }
+      </section>
+
+      <!-- Pie y resumen -->
+      @if (a.horas.length > 0) {
+        <section class="bloque dos-columnas">
+          <div>
+            <h3>Totales</h3>
+            <div class="tabla-scroll">
+              <table class="tabla">
+                <thead><tr><th></th><th class="num">Jabas</th><th class="num">Kilos</th></tr></thead>
+                <tbody>
+                  <tr><td>Total (ultima hora)</td><td class="num">{{ a.pie.ultimaHoraJabas | number: '1.0-0' }}</td><td class="num">{{ a.pie.ultimaHoraKilos | number: '1.0-0' }}</td></tr>
+                  <tr><td>Acumulado previo</td><td class="num">{{ a.pie.previoJabas | number: '1.0-0' }}</td><td class="num">{{ a.pie.previoKilos | number: '1.0-0' }}</td></tr>
+                  <tr class="resalta"><td>Total acumulado</td><td class="num">{{ a.pie.acumuladoJabas | number: '1.0-0' }}</td><td class="num">{{ a.pie.acumuladoKilos | number: '1.0-1' }}</td></tr>
+                  <tr><td>Stock</td><td class="num">{{ a.pie.stockJabas | number: '1.0-0' }}</td><td class="num">{{ a.pie.stockKilos | number: '1.0-2' }}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div>
+            <h3>Resumen por maquina</h3>
+            <div class="tabla-scroll">
+              <table class="tabla">
+                <thead><tr><th>Maquina</th><th class="num">Jabas</th><th class="num">Kilos</th><th>Supervisor</th></tr></thead>
+                <tbody>
+                  @for (r of a.resumen; track r.maquinaId) {
+                    <tr>
+                      <td><strong>{{ r.maquina }}</strong></td>
+                      <td class="num">{{ r.jabas | number: '1.0-0' }}</td>
+                      <td class="num">{{ r.kilos | number: '1.0-1' }}</td>
+                      <td>
+                        @for (t of r.tramos; track $index) {
+                          <div>
+                            {{ t.supervisor }}
+                            @if (r.tramos.length > 1) { <small>({{ hora(t.inicio) }}-{{ hora(t.fin) }})</small> }
+                          </div>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+                <tfoot><tr><td>Total</td><td class="num">{{ a.totalJabas | number: '1.0-0' }}</td><td class="num">{{ a.totalKilos | number: '1.0-1' }}</td><td></td></tr></tfoot>
+              </table>
+            </div>
+          </div>
+        </section>
+      }
+    }
+  }
+</div>

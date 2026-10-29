@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -17,8 +17,10 @@ import { ReporteService } from '../../../core/services/reporte.service';
 import { ProcesoDiario } from '../../../core/models/proceso-diario.model';
 import { Corte } from '../../../core/models/corte.model';
 import { Advertencia } from '../../../core/models/advertencia.model';
+import { numerosDeHora } from '../../../core/utils/horas-corte.util';
 import { toIsoDateString } from '../../../core/utils/date.util';
 import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-dialog.component';
+import { ReporteCompartirDialogComponent } from '../../../shared/reporte-compartir-dialog/reporte-compartir-dialog.component';
 import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading-spinner.component';
 
 @Component({
@@ -63,11 +65,12 @@ export class ProcesoDetalleComponent {
 
   readonly proceso = signal<ProcesoDiario | null>(null);
   readonly cortes = signal<Corte[]>([]);
+  /** Numero de hora de proceso por corte (null = almuerzo del personal, no ocupa numero). */
+  readonly horaDeCorte = computed(() => numerosDeHora(this.cortes()));
   /** Hallazgos de consistencia del dia (solo productos con plantilla Vid). */
   readonly advertencias = signal<Advertencia[]>([]);
   readonly cargando = signal(true);
   readonly buscandoProceso = signal(true);
-  readonly generandoReporte = signal(false);
 
   private readonly fechaHoy = toIsoDateString(new Date());
 
@@ -170,23 +173,20 @@ export class ProcesoDetalleComponent {
     this.router.navigate(['/procesos', proceso.id, 'ingreso']);
   }
 
+  verAvanceEnVivo(): void {
+    const proceso = this.proceso();
+    if (!proceso) return;
+    this.router.navigate(['/procesos', proceso.id, 'avance']);
+  }
+
+  /** Abre la imagen del reporte dentro del sistema (dialogo), con opciones para compartirla. */
   verReporte(): void {
     const proceso = this.proceso();
     if (!proceso) return;
-
-    this.generandoReporte.set(true);
-
-    this.reporteService.obtenerImagenReporte(proceso.id).subscribe({
-      next: (blob) => {
-        this.generandoReporte.set(false);
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
-        setTimeout(() => URL.revokeObjectURL(url), 30000);
-      },
-      error: () => {
-        this.generandoReporte.set(false);
-        this.snackBar.open('Error al generar el reporte', 'Cerrar', { duration: 4000 });
-      }
+    this.dialog.open(ReporteCompartirDialogComponent, {
+      data: { procesoDiarioId: proceso.id, fecha: proceso.fecha },
+      width: '900px',
+      maxWidth: '95vw'
     });
   }
 
