@@ -89,6 +89,9 @@
             } @else {
               {{ horaDeCorte().get(c.id) }}
             }
+            @if (c.pendienteSync) {
+              <span class="pendiente" title="Guardado en este dispositivo; se enviara al volver la red">Sin enviar</span>
+            }
           </td>
         </ng-container>
 

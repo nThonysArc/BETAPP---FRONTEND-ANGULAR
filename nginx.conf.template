@@ -8,21 +8,32 @@ server {
     gzip_types text/css application/javascript application/json image/svg+xml;
     gzip_min_length 1024;
 
-    # Archivos con hash en el nombre (main-XXXX.js): cache largo e inmutable
-    location ~* \.(?:js|css|woff2?|png|jpg|jpeg|svg|ico)$ {
+    # Archivos que el navegador y el service worker deben re-consultar SIEMPRE.
+    # Si ngsw-worker.js o ngsw.json quedaran en cache, el dispositivo nunca veria una version nueva.
+    location = /index.html          { add_header Cache-Control "no-cache"; }
+    location = /ngsw-worker.js      { add_header Cache-Control "no-cache"; }
+    location = /ngsw.json           { add_header Cache-Control "no-cache"; }
+    location = /safety-worker.js    { add_header Cache-Control "no-cache"; }
+    location = /manifest.webmanifest { add_header Cache-Control "no-cache"; }
+
+    # Archivos con hash en el nombre (main-XXXXXXXX.js, chunk-XXXXXXXX.js): cambian de nombre al cambiar
+    # de contenido, por eso pueden vivir un anio en cache.
+    location ~* "-[A-Za-z0-9]{8}\.(?:js|css)$" {
         expires 1y;
         add_header Cache-Control "public, immutable";
         try_files $uri =404;
     }
 
-    # index.html nunca en cache: asi cada despliegue se ve de inmediato
-    location = /index.html {
-        add_header Cache-Control "no-store";
+    # Iconos e imagenes sin hash: cache corto.
+    location ~* \.(?:png|jpg|jpeg|svg|ico|woff2?)$ {
+        expires 7d;
+        add_header Cache-Control "public";
+        try_files $uri =404;
     }
 
     # SPA: cualquier ruta de Angular (/procesos/12/avance) cae en index.html
     location / {
         try_files $uri $uri/ /index.html;
-        add_header Cache-Control "no-store";
+        add_header Cache-Control "no-cache";
     }
 }

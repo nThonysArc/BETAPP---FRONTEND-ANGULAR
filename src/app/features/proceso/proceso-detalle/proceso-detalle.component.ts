@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -17,6 +17,8 @@ import { ReporteService } from '../../../core/services/reporte.service';
 import { ProcesoDiario } from '../../../core/models/proceso-diario.model';
 import { Corte } from '../../../core/models/corte.model';
 import { Advertencia } from '../../../core/models/advertencia.model';
+import { OfflinePrecargaService } from '../../../core/offline/offline-precarga.service';
+import { OfflineSyncService } from '../../../core/offline/offline-sync.service';
 import { numerosDeHora } from '../../../core/utils/horas-corte.util';
 import { toIsoDateString } from '../../../core/utils/date.util';
 import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-dialog.component';
@@ -47,6 +49,8 @@ export class ProcesoDetalleComponent {
   private readonly reporteService = inject(ReporteService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
+  private readonly sync = inject(OfflineSyncService);
+  private readonly precarga = inject(OfflinePrecargaService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -75,11 +79,29 @@ export class ProcesoDetalleComponent {
   private readonly fechaHoy = toIsoDateString(new Date());
 
   constructor() {
+    // Al terminar de enviar lo pendiente, se vuelve a leer el estado real del servidor
+    // (reemplaza lo provisional guardado sin conexion).
+    let primera = true;
+    effect(() => {
+      this.sync.version();
+      if (primera) { primera = false; return; }
+      const id = untracked(() => this.proceso()?.id);
+      if (id) untracked(() => this.recargarTrasSincronizar(id));
+    });
+
     if (this.esModoDirecto) {
       this.cargarProcesoDirecto(Number(this.procesoIdDirecto));
     } else {
       this.buscarProcesoDeHoy();
     }
+  }
+
+  private recargarTrasSincronizar(procesoId: number): void {
+    this.procesoDiarioService.obtener(procesoId).subscribe({
+      next: (proceso) => this.proceso.set(proceso),
+      error: () => undefined
+    });
+    this.cargarCortes(procesoId);
   }
 
   private cargarProcesoDirecto(procesoId: number): void {
@@ -138,6 +160,8 @@ export class ProcesoDetalleComponent {
         this.cortes.set(cortes);
         this.cargando.set(false);
         this.cargarAdvertencias(procesoDiarioId);
+        // Con red, se deja en el dispositivo todo lo necesario para seguir trabajando si se corta.
+        this.precarga.precargar(procesoDiarioId);
       },
       error: () => {
         this.cargando.set(false);

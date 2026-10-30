@@ -67,4 +67,6 @@ export interface Corte {
   clienteUuid: string;
   detalles: CorteDetalle[];
   supervisores: CorteSupervisor[];
+  /** Solo en el cliente: el corte se guardo sin conexion y aun no se envio al servidor. */
+  pendienteSync?: boolean;
 }
