@@ -10,6 +10,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { ReporteService } from '../../core/services/reporte.service';
+import { CorteService } from '../../core/services/corte.service';
+import { numerosDeHora } from '../../core/utils/horas-corte.util';
 import { construirMensajeReporte } from '../../core/utils/mensaje-reporte.util';
 import { LoadingSpinnerComponent } from '../loading-spinner/loading-spinner.component';
 
@@ -86,6 +88,7 @@ export class ReporteCompartirDialogComponent implements OnDestroy {
   readonly dialogRef = inject(MatDialogRef<ReporteCompartirDialogComponent>);
   private readonly data = inject<ReporteCompartirData>(MAT_DIALOG_DATA);
   private readonly reporteService = inject(ReporteService);
+  private readonly corteService = inject(CorteService);
   private readonly snackBar = inject(MatSnackBar);
 
   readonly cargando = signal(true);
@@ -108,14 +111,23 @@ export class ReporteCompartirDialogComponent implements OnDestroy {
     // La imagen es lo importante; el avance solo sirve para saber que hora va. Si falla, igual se comparte.
     forkJoin({
       imagen: this.reporteService.obtenerImagenReporte(this.data.procesoDiarioId),
-      avance: this.reporteService.obtenerAvance(this.data.procesoDiarioId).pipe(catchError(() => of(null)))
+      avance: this.reporteService.obtenerAvance(this.data.procesoDiarioId).pipe(catchError(() => of(null))),
+      cortes: this.corteService.listar(this.data.procesoDiarioId).pipe(catchError(() => of(null)))
     }).subscribe({
-      next: ({ imagen, avance }) => {
+      next: ({ imagen, avance, cortes }) => {
         this.blob = imagen;
         this.urlImagen.set(URL.createObjectURL(imagen));
+        // Arandano: la hora sale del avance. Vid no tiene vista en linea (avance null): se cuenta
+        // con los cortes, igual que el reporte (el almuerzo general no ocupa numero de hora).
+        let ultima: number | null = null;
         const horas = (avance?.avance?.horas ?? []).filter((h) => !h.pausa);
-        const ultima = horas.length ? horas[horas.length - 1].numero : null;
-        this.mensaje = construirMensajeReporte(new Date(), ultima);
+        if (horas.length) {
+          ultima = horas[horas.length - 1].numero;
+        } else if (cortes?.length) {
+          const numeros = [...numerosDeHora(cortes).values()].filter((n): n is number => n !== null);
+          ultima = numeros.length ? Math.max(...numeros) : null;
+        }
+        this.mensaje = construirMensajeReporte(new Date(), ultima, avance?.plantilla);
         this.cargando.set(false);
       },
       error: () => {

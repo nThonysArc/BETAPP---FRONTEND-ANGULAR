@@ -24,3 +24,8 @@ html {
     )
   );
 }
+
+/* Evita que un arrastre hacia abajo en el celular recargue la pagina por accidente (pull-to-refresh). */
+html, body {
+  overscroll-behavior-y: contain;
+}

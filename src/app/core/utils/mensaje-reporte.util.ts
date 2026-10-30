@@ -24,8 +24,16 @@ export function textoHora(numero: number): string {
 /**
  * Mensaje listo para enviar. `numeroHora` es la ultima hora de produccion registrada
  * (null si aun no hay ninguna: entonces se omite la linea de la hora).
+ * Arandano lleva saludo segun la hora; Vid usa su texto propio, sin saludo.
  */
-export function construirMensajeReporte(ahora: Date, numeroHora: number | null, producto = 'arándano fresco'): string {
-  const base = `${saludoSegunHora(ahora)}, se adjunta avance por hora del proceso de ${producto}`;
+export function construirMensajeReporte(
+  ahora: Date,
+  numeroHora: number | null,
+  plantilla: 'ARANDANO' | 'VID' | null | undefined = 'ARANDANO'
+): string {
+  const base = plantilla === 'VID'
+    ? 'Se envía avance por hora del proceso de selección Vid'
+    : `${saludoSegunHora(ahora)}, se adjunta avance por hora del proceso de arándano fresco`;
+  if (plantilla === 'VID') return numeroHora != null ? `${base}\n${textoHora(numeroHora)}` : base;
   return numeroHora != null ? `${base}:\n${textoHora(numeroHora)}` : `${base}.`;
 }
