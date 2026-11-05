@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Advertencia } from '../models/advertencia.model';
@@ -28,5 +28,26 @@ export class ReporteService {
     return this.http.get(`${environment.apiUrl}/procesos/${procesoDiarioId}/reporte-imagen`, {
       responseType: 'blob'
     });
+  }
+
+  /** Reporte editable (.xlsx) con formulas vivas. Solo Arandano por ahora. */
+  descargarExcel(procesoDiarioId: number): Observable<HttpResponse<Blob>> {
+    // observe 'response' para poder leer el nombre del archivo que manda el backend (Content-Disposition).
+    return this.http.get(`${environment.apiUrl}/procesos/${procesoDiarioId}/reporte-excel`, {
+      responseType: 'blob',
+      observe: 'response'
+    });
+  }
+
+  /** Saca el nombre del archivo del encabezado Content-Disposition (null si no viene). */
+  static nombreDeArchivo(contentDisposition: string | null): string | null {
+    if (!contentDisposition) return null;
+    const m = /filename\*=UTF-8''([^;]+)/i.exec(contentDisposition) ?? /filename="?([^";]+)"?/i.exec(contentDisposition);
+    if (!m) return null;
+    try {
+      return decodeURIComponent(m[1]).trim();
+    } catch {
+      return m[1].trim();
+    }
   }
 }

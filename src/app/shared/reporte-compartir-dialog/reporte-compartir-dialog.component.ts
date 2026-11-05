@@ -7,6 +7,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { ReporteService } from '../../core/services/reporte.service';
@@ -15,6 +16,11 @@ import { numerosDeHora } from '../../core/utils/horas-corte.util';
 import { CampanaService } from '../../core/services/campana.service';
 import { ProcesoDiarioService } from '../../core/services/proceso-diario.service';
 import { construirMensajeReporte, nombreProcesoParaMensaje, procesoPorDefecto } from '../../core/utils/mensaje-reporte.util';
+import {
+  asuntoBase, construirEml, fechaConPuntos, htmlCorreo, nombreProcesoCorreo, nuevoMessageId,
+  saludoCorreo
+} from '../../core/utils/correo-avance.util';
+import { saludoSegunHora } from '../../core/utils/mensaje-reporte.util';
 import { LoadingSpinnerComponent } from '../loading-spinner/loading-spinner.component';
 
 export interface ReporteCompartirData {
@@ -37,7 +43,7 @@ export interface ReporteCompartirData {
   standalone: true,
   imports: [
     FormsModule, MatDialogModule, MatButtonModule, MatIconModule, MatFormFieldModule, MatInputModule,
-    MatSnackBarModule, LoadingSpinnerComponent
+    MatCheckboxModule, MatSnackBarModule, LoadingSpinnerComponent
   ],
   template: `
     <h2 mat-dialog-title>Reporte de avance</h2>
@@ -59,6 +65,42 @@ export interface ReporteCompartirData {
           <mat-label>Mensaje</mat-label>
           <textarea matInput rows="3" [(ngModel)]="mensaje"></textarea>
         </mat-form-field>
+
+        @if (correoAbierto()) {
+          <section class="correo">
+            <h3>Correo (Outlook)</h3>
+            <mat-form-field appearance="outline">
+              <mat-label>Asunto</mat-label>
+              <input matInput [(ngModel)]="asunto" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Para (separa con ;)</mat-label>
+              <input matInput [(ngModel)]="para" (ngModelChange)="guardarConfig()" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>CC</mat-label>
+              <input matInput [(ngModel)]="cc" (ngModelChange)="guardarConfig()" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Saludo a</mat-label>
+              <input matInput [(ngModel)]="saludoA" placeholder="Ing. Christian" (ngModelChange)="guardarConfig()" />
+            </mat-form-field>
+            <mat-checkbox [(ngModel)]="continuarHilo">
+              Continuar el hilo anterior
+              @if (enviadosAntes() > 0) { <span class="nota">· {{ enviadosAntes() }} previo(s) hoy</span> }
+            </mat-checkbox>
+            <div class="acciones-correo">
+              <button mat-flat-button color="primary" (click)="descargarBorrador()">
+                <mat-icon>mail</mat-icon> Descargar borrador
+              </button>
+              @if (puedeCopiarImagen) {
+                <button mat-stroked-button (click)="copiarParaOutlook()">
+                  <mat-icon>content_paste</mat-icon> Copiar para pegar
+                </button>
+              }
+            </div>
+          </section>
+        }
       }
     </mat-dialog-content>
 
@@ -73,6 +115,9 @@ export interface ReporteCompartirData {
             <mat-icon>content_copy</mat-icon> Copiar imagen
           </button>
         }
+        <button mat-stroked-button (click)="correoAbierto.set(!correoAbierto())">
+          <mat-icon>mail</mat-icon> Correo
+        </button>
         <button mat-stroked-button (click)="abrirWhatsApp()">
           <mat-icon>chat</mat-icon> WhatsApp
         </button>
@@ -92,6 +137,10 @@ export interface ReporteCompartirData {
     .imagen { max-width: 100%; height: auto; border: 1px solid var(--hairline); border-radius: 8px; background: #fff; }
     .mensaje { width: 100%; }
     .error { color: var(--danger); }
+    .correo { display: flex; flex-direction: column; gap: 4px; padding: 12px; border: 1px solid var(--hairline); border-radius: 12px; }
+    .correo h3 { margin: 0 0 8px; }
+    .nota { opacity: .7; font-size: 12px; }
+    .acciones-correo { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
     .acciones { flex-wrap: wrap; gap: 8px; }
   `]
 })
@@ -109,6 +158,17 @@ export class ReporteCompartirDialogComponent implements OnDestroy {
   readonly urlImagen = signal<string>('');
   readonly ampliada = signal(false);
   mensaje = '';
+
+  // ---- Correo (Outlook) ----
+  readonly correoAbierto = signal(false);
+  readonly enviadosAntes = signal(0);
+  asunto = '';
+  para = '';
+  cc = '';
+  saludoA = '';
+  continuarHilo = false;
+  private contexto: { producto: string; anio: number | null; fecha: string } | null = null;
+  private anteriores: string[] = [];
 
   private blob: Blob | null = null;
 
@@ -129,8 +189,8 @@ export class ReporteCompartirDialogComponent implements OnDestroy {
       cortes: this.corteService.listar(this.data.procesoDiarioId).pipe(catchError(() => of(null))),
       // Producto del proceso (proceso -> campana -> producto) para nombrar el cultivo en el mensaje.
       producto: this.procesoService.obtener(this.data.procesoDiarioId).pipe(
-        switchMap((p) => this.campanaService.obtener(p.campanaId)),
-        map((c) => c.productoNombre),
+        switchMap((p) => this.campanaService.obtener(p.campanaId).pipe(map((c) => ({ ...c, fecha: p.fecha })))),
+        map((c) => ({ producto: c.productoNombre, anio: c.anio ?? null, fecha: c.fecha })),
         catchError(() => of(null))
       )
     }).subscribe({
@@ -149,8 +209,9 @@ export class ReporteCompartirDialogComponent implements OnDestroy {
         }
         this.mensaje = construirMensajeReporte(
           new Date(), ultima,
-          producto ? nombreProcesoParaMensaje(producto) : procesoPorDefecto(avance?.plantilla)
+          producto ? nombreProcesoParaMensaje(producto.producto) : procesoPorDefecto(avance?.plantilla)
         );
+        if (producto) this.prepararCorreo(producto);
         this.cargando.set(false);
       },
       error: () => {
@@ -200,5 +261,100 @@ export class ReporteCompartirDialogComponent implements OnDestroy {
     a.href = this.urlImagen();
     a.download = this.archivo().name;
     a.click();
+  }
+
+  // ==========================================================
+  // Correo: borrador .eml para Outlook
+  // ==========================================================
+
+  private claveHilo(): string {
+    return `betaapp.correo.hilo.${this.data.procesoDiarioId}`;
+  }
+
+  private prepararCorreo(ctx: { producto: string; anio: number | null; fecha: string }): void {
+    this.contexto = ctx;
+    try {
+      const cfg = JSON.parse(localStorage.getItem('betaapp.correo.config') ?? '{}');
+      this.para = cfg.para ?? '';
+      this.cc = cfg.cc ?? '';
+      this.saludoA = cfg.saludoA ?? '';
+      this.anteriores = JSON.parse(localStorage.getItem(this.claveHilo()) ?? '[]');
+    } catch {
+      /* sin almacenamiento: queda vacio */
+    }
+    this.enviadosAntes.set(this.anteriores.length);
+    this.continuarHilo = this.anteriores.length > 0;
+    this.actualizarAsunto();
+  }
+
+  actualizarAsunto(): void {
+    if (!this.contexto) return;
+    const base = asuntoBase(this.contexto.producto, this.contexto.anio, this.contexto.fecha);
+    // Mismo asunto en todos los correos del dia, sin "RE:": Outlook agrupa la conversacion por asunto.
+    this.asunto = base;
+  }
+
+  guardarConfig(): void {
+    try {
+      localStorage.setItem('betaapp.correo.config', JSON.stringify({ para: this.para, cc: this.cc, saludoA: this.saludoA }));
+    } catch {
+      /* no se pudo guardar: solo se pierde la comodidad */
+    }
+  }
+
+  private fraseCorreo(): string {
+    const ctx = this.contexto!;
+    return `Se envía el avance del proceso ${nombreProcesoCorreo(ctx.producto)} correspondiente al día ${fechaConPuntos(ctx.fecha)}`;
+  }
+
+  private saludoLinea(): string {
+    return saludoCorreo(saludoSegunHora(new Date()), this.saludoA);
+  }
+
+  async descargarBorrador(): Promise<void> {
+    if (!this.blob || !this.contexto) return;
+    const png = new Uint8Array(await this.blob.arrayBuffer());
+    const id = nuevoMessageId(this.data.procesoDiarioId, Date.now());
+    const eml = construirEml({
+      asunto: this.asunto, para: this.para, cc: this.cc, saludo: this.saludoLinea(), frase: this.fraseCorreo(),
+      png, messageId: id, anteriores: this.continuarHilo ? this.anteriores : []
+    });
+    const url = URL.createObjectURL(new Blob([eml], { type: 'message/rfc822' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${this.asunto.replace(/[\\/:*?"<>|]/g, '-')}.eml`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+    // Se recuerda este correo para encadenar el siguiente.
+    this.anteriores = [...(this.continuarHilo ? this.anteriores : []), id];
+    this.enviadosAntes.set(this.anteriores.length);
+    try {
+      localStorage.setItem(this.claveHilo(), JSON.stringify(this.anteriores));
+    } catch {
+      /* sin almacenamiento: el asunto RE: igual agrupa el hilo en Outlook */
+    }
+    this.snackBar.open('Abre el archivo descargado: Outlook lo muestra como borrador listo para enviar.', 'Cerrar', { duration: 7000 });
+  }
+
+  /** Para Outlook web: copia el correo (texto + imagen) y se pega en un mensaje nuevo. */
+  async copiarParaOutlook(): Promise<void> {
+    if (!this.blob || !this.contexto) return;
+    try {
+      const png = new Uint8Array(await this.blob.arrayBuffer());
+      let bin = '';
+      for (let i = 0; i < png.length; i += 0x8000) bin += String.fromCharCode(...png.subarray(i, i + 0x8000));
+      const html = htmlCorreo(
+        { saludo: this.saludoLinea(), frase: this.fraseCorreo(), png },
+        `data:image/png;base64,${btoa(bin)}`
+      );
+      await navigator.clipboard.write([new ClipboardItem({
+        'text/html': new Blob([html], { type: 'text/html' }),
+        'text/plain': new Blob([`${this.saludoLinea()}\n${this.fraseCorreo()}\n\nSaludos`], { type: 'text/plain' })
+      })]);
+      this.snackBar.open(`Copiado. Pégalo en un correo nuevo con el asunto: ${this.asunto}`, 'Cerrar', { duration: 8000 });
+    } catch {
+      this.snackBar.open('No se pudo copiar; usa Descargar borrador.', 'Cerrar', { duration: 4000 });
+    }
   }
 }

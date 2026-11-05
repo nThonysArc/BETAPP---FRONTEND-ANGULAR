@@ -68,6 +68,7 @@ export class ProcesoDetalleComponent {
   readonly campanaId = this.campanaIdParam !== null ? Number(this.campanaIdParam) : null;
 
   readonly proceso = signal<ProcesoDiario | null>(null);
+  readonly descargandoExcel = signal(false);
   readonly cortes = signal<Corte[]>([]);
   /** Numero de hora de proceso por corte (null = almuerzo del personal, no ocupa numero). */
   readonly horaDeCorte = computed(() => numerosDeHora(this.cortes()));
@@ -211,6 +212,39 @@ export class ProcesoDetalleComponent {
       data: { procesoDiarioId: proceso.id, fecha: proceso.fecha },
       width: '900px',
       maxWidth: '95vw'
+    });
+  }
+
+  /** Descarga el avance como .xlsx editable (formulas vivas). El backend rechaza los productos no soportados. */
+  descargarExcel(): void {
+    const proceso = this.proceso();
+    if (!proceso || this.descargandoExcel()) return;
+    this.descargandoExcel.set(true);
+    this.reporteService.descargarExcel(proceso.id).subscribe({
+      next: (resp) => {
+        this.descargandoExcel.set(false);
+        if (!resp.body) return;
+        const nombre = ReporteService.nombreDeArchivo(resp.headers.get('Content-Disposition'))
+          ?? `AVANCE POR HORA PROCESO ${proceso.fecha}.xlsx`;
+        const url = URL.createObjectURL(resp.body);
+        const enlace = document.createElement('a');
+        enlace.href = url;
+        enlace.download = nombre;
+        enlace.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      },
+      error: async (err: HttpErrorResponse) => {
+        this.descargandoExcel.set(false);
+        let mensaje = 'No se pudo generar el Excel';
+        try {
+          // Con responseType blob, el cuerpo del error llega como Blob: hay que leerlo como texto.
+          const texto = err.error instanceof Blob ? await err.error.text() : '';
+          mensaje = (texto ? JSON.parse(texto).message : err.error?.message) ?? mensaje;
+        } catch {
+          /* se queda el mensaje generico */
+        }
+        this.snackBar.open(mensaje, 'Cerrar', { duration: 5000 });
+      }
     });
   }
 

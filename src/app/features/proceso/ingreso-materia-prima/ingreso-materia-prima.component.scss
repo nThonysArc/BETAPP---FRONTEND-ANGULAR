@@ -25,3 +25,13 @@
 .fila-clickeable:hover {
   background-color: var(--surface-sunken);
 }
+
+.campo-pegar { width: 100%; }
+.acciones-pegado { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 12px; }
+
+.total-general {
+  display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center;
+  margin-top: 12px; padding: 12px 16px; border-radius: 12px;
+  background: color-mix(in srgb, var(--mat-sys-primary, #1b5e20) 10%, transparent);
+  .total-titulo { font-weight: 700; letter-spacing: .04em; }
+}

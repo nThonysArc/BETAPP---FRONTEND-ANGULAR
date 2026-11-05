@@ -1,5 +1,6 @@
 import { CalculadoraSumasDirective } from '../../../shared/calculadora-sumas/calculadora-sumas.directive';
-import { Component, inject, signal } from '@angular/core';
+import { Component, HostListener, inject, signal } from '@angular/core';
+import { forkJoin } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -20,6 +21,7 @@ import { CampanaService } from '../../../core/services/campana.service';
 import { VariedadService } from '../../../core/services/variedad.service';
 import { IngresoMateriaPrima } from '../../../core/models/ingreso-materia-prima.model';
 import { Variedad } from '../../../core/models/variedad.model';
+import { FilaPegada, parsearPegado, pareceTabla } from '../../../shared/pegado-excel/pegado-excel.util';
 import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading-spinner.component';
 
 @Component({
@@ -62,11 +64,28 @@ export class IngresoMateriaPrimaComponent {
 
   private campanaId: number | null = null;
 
+  /** Filas detectadas al pegar desde Excel, pendientes de confirmar (varias variedades a la vez). */
+  readonly pegado = signal<FilaPegada[]>([]);
+  readonly columnasPegado = ['variedad', 'jabas', 'kilos', 'promedio'];
+
   readonly form = this.fb.group({
     variedadId: [null as number | null, Validators.required],
     jabas: [null as number | null, [Validators.required, Validators.min(0)]],
     kilos: [null as number | null, [Validators.required, Validators.min(0)]]
   });
+
+  get totalJabas(): number {
+    return this.ingresos().reduce((t, i) => t + Number(i.jabas || 0), 0);
+  }
+
+  get totalKilos(): number {
+    return this.ingresos().reduce((t, i) => t + Number(i.kilos || 0), 0);
+  }
+
+  /** Promedio ponderado: kilos totales / jabas totales (no el promedio de los promedios). */
+  get pesoPromedioGeneral(): number | null {
+    return this.totalJabas > 0 ? this.totalKilos / this.totalJabas : null;
+  }
 
   get pesoPromedioPreview(): number | null {
     const { jabas, kilos } = this.form.getRawValue();
@@ -102,6 +121,93 @@ export class IngresoMateriaPrimaComponent {
       error: () => {
         this.cargando.set(false);
         this.snackBar.open('Error al cargar el ingreso de materia prima', 'Cerrar', { duration: 4000 });
+      }
+    });
+  }
+
+  /**
+   * Pegar datos copiados de Excel en cualquier parte de la pantalla. Si es un solo valor ("500") se deja
+   * que el campo lo reciba normal; si trae varias celdas/filas se interpreta como tabla.
+   */
+  @HostListener('paste', ['$event'])
+  alPegar(evento: ClipboardEvent): void {
+    const texto = evento.clipboardData?.getData('text') ?? '';
+    if (!pareceTabla(texto)) return;
+    evento.preventDefault();
+    this.procesarPegado(texto);
+  }
+
+  procesarPegado(texto: string): void {
+    const filas = parsearPegado(
+      texto,
+      this.variedadesDisponibles().map((v) => ({ id: v.id, nombre: v.nombre }))
+    );
+    if (filas.length === 0) {
+      this.snackBar.open('No se encontraron jabas y kilos en lo pegado', 'Cerrar', { duration: 4000 });
+      return;
+    }
+    // Una sola fila: se llena el formulario (si no trae variedad, se respeta la elegida) para revisar y guardar.
+    if (filas.length === 1) {
+      const f = filas[0];
+      this.form.patchValue({
+        variedadId: f.variedadId ?? this.form.getRawValue().variedadId,
+        jabas: f.jabas,
+        kilos: f.kilos
+      });
+      this.pegado.set([]);
+      this.snackBar.open('Datos pegados: revisa y pulsa Guardar', 'Cerrar', { duration: 3000 });
+      return;
+    }
+    this.pegado.set(filas);
+  }
+
+  asignarVariedadPegada(indice: number, variedadId: number): void {
+    this.pegado.update((filas) => filas.map((f, i) => (i === indice ? { ...f, variedadId } : f)));
+  }
+
+  /** Jabas y kilos vienen al reves con frecuencia: un clic los intercambia en todas las filas. */
+  intercambiarPegado(): void {
+    this.pegado.update((filas) => filas.map((f) => ({ ...f, jabas: f.kilos, kilos: f.jabas })));
+  }
+
+  promedioDe(f: FilaPegada): number | null {
+    return f.jabas > 0 ? Math.round((f.kilos / f.jabas) * 1000) / 1000 : null;
+  }
+
+  nombreVariedad(id: number): string {
+    return this.variedadesDisponibles().find((v) => v.id === id)?.nombre ?? '';
+  }
+
+  get pegadoListo(): boolean {
+    const filas = this.pegado();
+    return filas.length > 0 && filas.every((f) => f.variedadId !== null);
+  }
+
+  descartarPegado(): void {
+    this.pegado.set([]);
+  }
+
+  guardarPegado(): void {
+    if (!this.pegadoListo) return;
+    this.guardando.set(true);
+    forkJoin(
+      this.pegado().map((f) =>
+        this.ingresoService.actualizar(this.procesoDiarioId, {
+          variedadId: f.variedadId!,
+          jabas: f.jabas,
+          kilos: f.kilos
+        })
+      )
+    ).subscribe({
+      next: () => {
+        this.guardando.set(false);
+        this.snackBar.open(`${this.pegado().length} variedades actualizadas`, 'Cerrar', { duration: 3000 });
+        this.pegado.set([]);
+        this.cargarIngresos();
+      },
+      error: (err) => {
+        this.guardando.set(false);
+        this.snackBar.open(err.error?.message ?? 'Error al guardar lo pegado', 'Cerrar', { duration: 4000 });
       }
     });
   }

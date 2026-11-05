@@ -50,6 +50,10 @@
           <mat-icon>image</mat-icon>
           Ver reporte
         </button>
+        <button mat-stroked-button (click)="descargarExcel()" [disabled]="descargandoExcel()">
+          <mat-icon>table_view</mat-icon>
+          {{ descargandoExcel() ? 'Generando...' : 'Descargar Excel' }}
+        </button>
       }
       @if (proceso()!.estado === 'ABIERTO') {
         @if (auth.tiene('PROCESOS_CERRAR')) {

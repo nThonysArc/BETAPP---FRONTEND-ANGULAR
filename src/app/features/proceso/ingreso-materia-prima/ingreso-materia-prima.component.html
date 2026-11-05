@@ -10,7 +10,7 @@
     <mat-card-header>
       <mat-card-title>Actualizar acumulado</mat-card-title>
       <mat-card-subtitle>
-        Ingresa el TOTAL acumulado hasta el momento reportado por Recepcion (no un incremento).
+        Total acumulado reportado por Recepcion (no un incremento).
       </mat-card-subtitle>
     </mat-card-header>
 
@@ -70,6 +70,65 @@
     </mat-card-content>
   </mat-card>
 
+  <mat-card class="seccion-form">
+    <mat-card-header>
+      <mat-card-title>Pegar desde Excel</mat-card-title>
+      <mat-card-subtitle>
+        Copia Variedad, Jabas y Kilos del Excel y pega (Ctrl+V).
+      </mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <mat-form-field appearance="outline" class="campo-pegar">
+        <mat-label>Pega aqui las celdas copiadas</mat-label>
+        <textarea matInput rows="3" #zonaPegado (input)="procesarPegado(zonaPegado.value); zonaPegado.value = ''"></textarea>
+      </mat-form-field>
+
+      @if (pegado().length > 0) {
+        <p class="preview">Revisa lo detectado antes de guardar:</p>
+        <table mat-table [dataSource]="pegado()" class="tabla tabla-apilada tabla-apilada--rejilla">
+          <ng-container matColumnDef="variedad">
+            <th mat-header-cell *matHeaderCellDef>Variedad</th>
+            <td mat-cell *matCellDef="let f; let i = index" data-label="Variedad" data-titulo>
+              @if (f.variedadId !== null) {
+                {{ nombreVariedad(f.variedadId) }}
+              } @else {
+                <mat-select placeholder="{{ f.variedadTexto || 'Elegir' }}" (selectionChange)="asignarVariedadPegada(i, $event.value)">
+                  @for (v of variedadesDisponibles(); track v.id) {
+                    <mat-option [value]="v.id">{{ v.nombre }}</mat-option>
+                  }
+                </mat-select>
+              }
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="jabas">
+            <th mat-header-cell *matHeaderCellDef>Jabas</th>
+            <td mat-cell *matCellDef="let f" data-label="Jabas">{{ f.jabas }}</td>
+          </ng-container>
+          <ng-container matColumnDef="kilos">
+            <th mat-header-cell *matHeaderCellDef>Kilos</th>
+            <td mat-cell *matCellDef="let f" data-label="Kilos">{{ f.kilos }}</td>
+          </ng-container>
+          <ng-container matColumnDef="promedio">
+            <th mat-header-cell *matHeaderCellDef>Prom./jaba</th>
+            <td mat-cell *matCellDef="let f" data-label="Prom./jaba">{{ promedioDe(f) ?? '-' }}</td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="columnasPegado"></tr>
+          <tr mat-row *matRowDef="let row; columns: columnasPegado;"></tr>
+        </table>
+        <div class="acciones-pegado">
+          <button mat-button type="button" (click)="intercambiarPegado()">Intercambiar jabas y kilos</button>
+          <button mat-button type="button" (click)="descartarPegado()">Descartar</button>
+          <button mat-flat-button color="primary" type="button" [disabled]="!pegadoListo || guardando()" (click)="guardarPegado()">
+            Guardar todo
+          </button>
+        </div>
+        @if (!pegadoListo) {
+          <p class="preview">Elige la variedad de las filas sin reconocer.</p>
+        }
+      }
+    </mat-card-content>
+  </mat-card>
+
   <h3>Ingreso actual por variedad</h3>
 
   @if (cargando()) {
@@ -104,6 +163,15 @@
       <tr mat-header-row *matHeaderRowDef="columnas"></tr>
       <tr mat-row *matRowDef="let row; columns: columnas;" (click)="editarVariedad(row)" class="fila-clickeable"></tr>
     </table>
+
+    @if (ingresos().length > 0) {
+      <div class="total-general">
+        <span class="total-titulo">TOTAL GENERAL</span>
+        <span>Jabas: <strong>{{ totalJabas | number: '1.0-0' }}</strong></span>
+        <span>Kilos: <strong>{{ totalKilos | number: '1.0-1' }}</strong></span>
+        <span>Peso prom./jaba: <strong>{{ pesoPromedioGeneral !== null ? (pesoPromedioGeneral | number: '1.0-3') : '-' }}</strong> kg</span>
+      </div>
+    }
 
     @if (ingresos().length === 0) {
       <p class="vacio">Aun no se ha registrado ningun ingreso hoy.</p>

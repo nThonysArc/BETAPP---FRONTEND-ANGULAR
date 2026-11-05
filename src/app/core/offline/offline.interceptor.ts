@@ -12,7 +12,7 @@ import { OfflineSyncService } from './offline-sync.service';
 const ESPERA_LECTURA_MS = 8000;
 const ESPERA_ESCRITURA_MS = 15000;
 
-const NO_CACHEABLE = /\/(reporte-imagen|avance|auth\/|advertencias)/;
+const NO_CACHEABLE = /\/(reporte-imagen|reporte-excel|avance|auth\/|advertencias)/;
 const RUTA_PROCESO = /\/procesos\/(\d+)(?:\/(?:cortes(?:\/.*)?|materia-prima))?$/;
 
 function procesoDe(url: string): number | null {
