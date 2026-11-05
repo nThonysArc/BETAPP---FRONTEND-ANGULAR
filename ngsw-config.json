@@ -16,22 +16,22 @@
       }
     },
     {
-      "name": "assets",
-      "installMode": "lazy",
-      "updateMode": "prefetch",
-      "resources": {
-        "files": [
-          "/**/*.(svg|cur|jpg|jpeg|png|webp|avif|gif|otf|ttf|woff|woff2)"
-        ]
-      }
-    },
-    {
       "name": "reporte-local",
       "installMode": "prefetch",
       "updateMode": "prefetch",
       "resources": {
         "files": [
           "/reporte/**"
+        ]
+      }
+    },
+    {
+      "name": "assets",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/**/*.(svg|cur|jpg|jpeg|png|webp|avif|gif|otf|ttf|woff|woff2)"
         ]
       }
     },
