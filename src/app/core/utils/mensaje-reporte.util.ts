@@ -22,18 +22,29 @@ export function textoHora(numero: number): string {
 }
 
 /**
- * Mensaje listo para enviar. `numeroHora` es la ultima hora de produccion registrada
- * (null si aun no hay ninguna: entonces se omite la linea de la hora).
- * Arandano lleva saludo segun la hora; Vid usa su texto propio, sin saludo.
+ * Nombre del proceso tal como se dice en el mensaje, a partir del nombre del producto en el sistema
+ * ("Arándano fresco" -> "arándano fresco"). Solo baja la primera letra si la segunda ya es minuscula,
+ * para no romper siglas como "EVF".
  */
-export function construirMensajeReporte(
-  ahora: Date,
-  numeroHora: number | null,
-  plantilla: 'ARANDANO' | 'VID' | null | undefined = 'ARANDANO'
-): string {
-  const base = plantilla === 'VID'
-    ? 'Se envía avance por hora del proceso de selección Vid'
-    : `${saludoSegunHora(ahora)}, se adjunta avance por hora del proceso de arándano fresco`;
-  if (plantilla === 'VID') return numeroHora != null ? `${base}\n${textoHora(numeroHora)}` : base;
+export function nombreProcesoParaMensaje(nombre: string): string {
+  const n = nombre.trim();
+  if (n.length > 1 && n[1] === n[1].toLowerCase() && n[1] !== n[1].toUpperCase()) {
+    return n[0].toLowerCase() + n.slice(1);
+  }
+  return n;
+}
+
+/** Texto de respaldo cuando no se pudo averiguar el producto (p. ej. sin conexion). */
+export function procesoPorDefecto(plantilla: 'ARANDANO' | 'VID' | null | undefined): string {
+  return plantilla === 'VID' ? 'selección Vid' : 'arándano fresco';
+}
+
+/**
+ * Mensaje listo para enviar, mismo formato para todo cultivo/proceso:
+ *   "Buenas tardes, se envía avance por hora de proceso de <proceso>:\n1ra hora"
+ * `numeroHora` es la ultima hora registrada (null si aun no hay: se omite esa linea).
+ */
+export function construirMensajeReporte(ahora: Date, numeroHora: number | null, proceso: string): string {
+  const base = `${saludoSegunHora(ahora)}, se envía avance por hora de proceso de ${proceso}`;
   return numeroHora != null ? `${base}:\n${textoHora(numeroHora)}` : `${base}.`;
 }

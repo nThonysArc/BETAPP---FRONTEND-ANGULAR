@@ -30,11 +30,14 @@
 
         <mat-form-field appearance="outline">
           <mat-label>Jabas acumuladas</mat-label>
-          <input matInput type="number" formControlName="jabas" />
+          <input matInput appCalculadoraSumas="Jabas" formControlName="jabas" />
           @if (form.get('jabas')?.hasError('required') && form.get('jabas')?.touched) {
             <mat-error>Este campo es obligatorio</mat-error>
           }
-          @if (form.get('jabas')?.hasError('min') && form.get('jabas')?.touched) {
+          @if (form.get('jabas')?.hasError('expresion')) {
+                    <mat-error>Operacion no valida (usa + - *)</mat-error>
+                  }
+                  @if (form.get('jabas')?.hasError('min') && form.get('jabas')?.touched) {
             <mat-error>No puede ser negativo</mat-error>
           }
         </mat-form-field>

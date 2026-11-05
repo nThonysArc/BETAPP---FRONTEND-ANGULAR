@@ -117,7 +117,10 @@
 
                 <mat-form-field appearance="outline" class="campo-numero">
                   <mat-label>Jabas</mat-label>
-                  <input matInput type="number" formControlName="jabas" />
+                  <input matInput appCalculadoraSumas="Jabas" formControlName="jabas" />
+                  @if (grupo.get('jabas')?.hasError('expresion')) {
+                    <mat-error>Operacion no valida (usa + - *)</mat-error>
+                  }
                   @if (grupo.get('jabas')?.hasError('min') && grupo.get('jabas')?.touched) {
                     <mat-error>No puede ser negativo</mat-error>
                   }
@@ -134,28 +137,35 @@
 
                 }
 
-                <mat-form-field appearance="outline" class="campo-numero-chico">
-                  <mat-label>{{ esVid() ? 'Personas' : 'Empacadores' }}</mat-label>
-                  <input matInput type="number" formControlName="empacadores" />
-                  @if (grupo.get('empacadores')?.hasError('min') && grupo.get('empacadores')?.touched) {
-                    <mat-error>No puede ser negativo</mat-error>
-                  }
-                </mat-form-field>
-
-                @if (!esVid()) {
-                  <mat-form-field appearance="outline" class="campo-numero">
-                    <mat-label>Kg / empacador</mat-label>
-                    <input matInput type="number" step="0.1" formControlName="kgPorEmpacador" />
-                    @if (grupo.get('kgPorEmpacador')?.hasError('min') && grupo.get('kgPorEmpacador')?.touched) {
+                @if (repiteKato(i)) {
+                  <div class="campo-mismo-equipo" title="Una sola cantidad de empacadores por kato">
+                    <mat-icon>group</mat-icon>
+                    <span>Mismo equipo de la kato: {{ grupo.get('empacadores')?.value }}</span>
+                  </div>
+                } @else {
+                  <mat-form-field appearance="outline" class="campo-numero-chico">
+                    <mat-label>{{ esVid() ? 'Personas' : 'Empacadores' }}</mat-label>
+                    <input matInput type="number" formControlName="empacadores" />
+                    @if (grupo.get('empacadores')?.hasError('min') && grupo.get('empacadores')?.touched) {
                       <mat-error>No puede ser negativo</mat-error>
                     }
                   </mat-form-field>
 
-                } @else {
-                  <div class="campo-rendimiento" title="Rendimiento por persona = jabas / personas">
-                    <span class="rend-etiqueta">Rend / persona</span>
-                    <strong>{{ rendimiento(grupo) ?? '—' }}</strong>
-                  </div>
+                  @if (!esVid()) {
+                    <mat-form-field appearance="outline" class="campo-numero">
+                      <mat-label>Kg / empacador</mat-label>
+                      <input matInput type="number" step="0.1" formControlName="kgPorEmpacador" />
+                      @if (grupo.get('kgPorEmpacador')?.hasError('min') && grupo.get('kgPorEmpacador')?.touched) {
+                        <mat-error>No puede ser negativo</mat-error>
+                      }
+                    </mat-form-field>
+
+                  } @else {
+                    <div class="campo-rendimiento" title="Rendimiento por persona = jabas / personas">
+                      <span class="rend-etiqueta">Rend / persona</span>
+                      <strong>{{ rendimiento(grupo) ?? '—' }}</strong>
+                    </div>
+                  }
                 }
 
                 <button mat-icon-button type="button" (click)="eliminarDetalle(i)" title="Eliminar fila">

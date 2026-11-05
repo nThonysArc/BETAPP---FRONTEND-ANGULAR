@@ -1,3 +1,4 @@
+import { CalculadoraSumasDirective } from '../../../shared/calculadora-sumas/calculadora-sumas.directive';
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -24,7 +25,7 @@ import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading
 @Component({
   selector: 'app-ingreso-materia-prima',
   standalone: true,
-  imports: [
+  imports: [CalculadoraSumasDirective, 
     CommonModule,
     ReactiveFormsModule,
     MatToolbarModule,
@@ -69,8 +70,9 @@ export class IngresoMateriaPrimaComponent {
 
   get pesoPromedioPreview(): number | null {
     const { jabas, kilos } = this.form.getRawValue();
-    if (!jabas || jabas <= 0 || kilos === null) return null;
-    return Math.round((kilos / jabas) * 1000) / 1000;
+    const nJabas = Number(jabas);
+    if (!nJabas || nJabas <= 0 || kilos === null) return null;
+    return Math.round((kilos / nJabas) * 1000) / 1000;
   }
 
   constructor() {
@@ -124,7 +126,7 @@ export class IngresoMateriaPrimaComponent {
     this.ingresoService
       .actualizar(this.procesoDiarioId, {
         variedadId: raw.variedadId!,
-        jabas: raw.jabas!,
+        jabas: Number(raw.jabas),
         kilos: raw.kilos!
       })
       .subscribe({

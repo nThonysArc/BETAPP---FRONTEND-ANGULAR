@@ -1,7 +1,7 @@
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, map, switchMap } from 'rxjs/operators';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,7 +12,9 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { ReporteService } from '../../core/services/reporte.service';
 import { CorteService } from '../../core/services/corte.service';
 import { numerosDeHora } from '../../core/utils/horas-corte.util';
-import { construirMensajeReporte } from '../../core/utils/mensaje-reporte.util';
+import { CampanaService } from '../../core/services/campana.service';
+import { ProcesoDiarioService } from '../../core/services/proceso-diario.service';
+import { construirMensajeReporte, nombreProcesoParaMensaje, procesoPorDefecto } from '../../core/utils/mensaje-reporte.util';
 import { LoadingSpinnerComponent } from '../loading-spinner/loading-spinner.component';
 
 export interface ReporteCompartirData {
@@ -45,7 +47,13 @@ export interface ReporteCompartirData {
       } @else if (error()) {
         <p class="error">{{ error() }}</p>
       } @else {
-        <img [src]="urlImagen()" alt="Imagen del reporte de avance" class="imagen" />
+        <div class="visor" [class.ampliada]="ampliada()">
+          <img [src]="urlImagen()" alt="Imagen del reporte de avance" class="imagen" />
+        </div>
+        <button mat-button type="button" class="ampliar" (click)="ampliada.set(!ampliada())">
+          <mat-icon>{{ ampliada() ? 'zoom_out' : 'zoom_in' }}</mat-icon>
+          {{ ampliada() ? 'Ajustar a la pantalla' : 'Ver en tamaño real (para leer los datos)' }}
+        </button>
 
         <mat-form-field appearance="outline" class="mensaje">
           <mat-label>Mensaje</mat-label>
@@ -78,6 +86,9 @@ export interface ReporteCompartirData {
   `,
   styles: [`
     .contenido { display: flex; flex-direction: column; gap: 12px; max-height: 75vh; }
+    .visor { overflow: auto; max-height: 60vh; border-radius: 8px; }
+    .visor.ampliada .imagen { max-width: none; width: 1500px; }
+    .ampliar { align-self: flex-start; }
     .imagen { max-width: 100%; height: auto; border: 1px solid var(--hairline); border-radius: 8px; background: #fff; }
     .mensaje { width: 100%; }
     .error { color: var(--danger); }
@@ -89,11 +100,14 @@ export class ReporteCompartirDialogComponent implements OnDestroy {
   private readonly data = inject<ReporteCompartirData>(MAT_DIALOG_DATA);
   private readonly reporteService = inject(ReporteService);
   private readonly corteService = inject(CorteService);
+  private readonly procesoService = inject(ProcesoDiarioService);
+  private readonly campanaService = inject(CampanaService);
   private readonly snackBar = inject(MatSnackBar);
 
   readonly cargando = signal(true);
   readonly error = signal<string | null>(null);
   readonly urlImagen = signal<string>('');
+  readonly ampliada = signal(false);
   mensaje = '';
 
   private blob: Blob | null = null;
@@ -112,9 +126,15 @@ export class ReporteCompartirDialogComponent implements OnDestroy {
     forkJoin({
       imagen: this.reporteService.obtenerImagenReporte(this.data.procesoDiarioId),
       avance: this.reporteService.obtenerAvance(this.data.procesoDiarioId).pipe(catchError(() => of(null))),
-      cortes: this.corteService.listar(this.data.procesoDiarioId).pipe(catchError(() => of(null)))
+      cortes: this.corteService.listar(this.data.procesoDiarioId).pipe(catchError(() => of(null))),
+      // Producto del proceso (proceso -> campana -> producto) para nombrar el cultivo en el mensaje.
+      producto: this.procesoService.obtener(this.data.procesoDiarioId).pipe(
+        switchMap((p) => this.campanaService.obtener(p.campanaId)),
+        map((c) => c.productoNombre),
+        catchError(() => of(null))
+      )
     }).subscribe({
-      next: ({ imagen, avance, cortes }) => {
+      next: ({ imagen, avance, cortes, producto }) => {
         this.blob = imagen;
         this.urlImagen.set(URL.createObjectURL(imagen));
         // Arandano: la hora sale del avance. Vid no tiene vista en linea (avance null): se cuenta
@@ -127,7 +147,10 @@ export class ReporteCompartirDialogComponent implements OnDestroy {
           const numeros = [...numerosDeHora(cortes).values()].filter((n): n is number => n !== null);
           ultima = numeros.length ? Math.max(...numeros) : null;
         }
-        this.mensaje = construirMensajeReporte(new Date(), ultima, avance?.plantilla);
+        this.mensaje = construirMensajeReporte(
+          new Date(), ultima,
+          producto ? nombreProcesoParaMensaje(producto) : procesoPorDefecto(avance?.plantilla)
+        );
         this.cargando.set(false);
       },
       error: () => {

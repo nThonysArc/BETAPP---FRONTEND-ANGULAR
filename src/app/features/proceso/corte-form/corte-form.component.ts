@@ -1,3 +1,4 @@
+import { CalculadoraSumasDirective } from '../../../shared/calculadora-sumas/calculadora-sumas.directive';
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -36,7 +37,7 @@ import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading
 @Component({
   selector: 'app-corte-form',
   standalone: true,
-  imports: [
+  imports: [CalculadoraSumasDirective, 
     CommonModule,
     ReactiveFormsModule,
     MatToolbarModule,
@@ -359,6 +360,7 @@ export class CorteFormComponent {
     grupo.get('maquinaId')?.valueChanges.subscribe((maquinaId) => {
       grupo.get('maquinaKatoId')?.setValue(null);
       this.asegurarSupervisor(maquinaId);
+      this.sincronizarKatos();
     });
 
     const recalcularPesoTotal = () => {
@@ -372,7 +374,13 @@ export class CorteFormComponent {
       }
     };
 
+    // Arandano: el equipo de empacadores es UNO por kato (aunque la kato haya pasado varias variedades),
+    // asi que el calculo se hace por kato, no por fila. Vid sigue calculando por fila.
     const recalcularKgPorEmpacador = () => {
+      if (!this.esVid()) {
+        this.sincronizarKatos();
+        return;
+      }
       const pesoTotal = grupo.get('pesoTotal')?.value;
       const empacadores = grupo.get('empacadores')?.value;
 
@@ -386,6 +394,54 @@ export class CorteFormComponent {
     grupo.get('variedadId')?.valueChanges.subscribe(recalcularPesoTotal);
     grupo.get('pesoTotal')?.valueChanges.subscribe(recalcularKgPorEmpacador);
     grupo.get('empacadores')?.valueChanges.subscribe(recalcularKgPorEmpacador);
+    grupo.get('maquinaKatoId')?.valueChanges.subscribe(() => this.sincronizarKatos());
+  }
+
+  /** Clave de la kato de una fila (maquina + kato); null si todavia no se eligio o es Vid. */
+  private claveKato(grupo: AbstractControl): string | null {
+    if (this.esVid()) return null;
+    const m = grupo.get('maquinaId')?.value;
+    const k = grupo.get('maquinaKatoId')?.value;
+    return m && k ? `${m}|${k}` : null;
+  }
+
+  /**
+   * True si la fila es una variedad adicional de una kato que ya aparece mas arriba. Esa fila NO pide
+   * empacadores: el equipo es el de la primera fila de la kato (una sola cantidad por kato).
+   */
+  repiteKato(index: number): boolean {
+    const clave = this.claveKato(this.detalles.at(index));
+    if (!clave) return false;
+    return this.detalles.controls.slice(0, index).some((g) => this.claveKato(g) === clave);
+  }
+
+  /**
+   * Deja consistente cada kato: todas sus filas llevan los empacadores de la primera, y kg/empacador
+   * se calcula con el peso de TODA la kato (suma de variedades) entre esos empacadores.
+   */
+  private sincronizarKatos(): void {
+    const porKato = new Map<string, AbstractControl[]>();
+    for (const g of this.detalles.controls) {
+      const clave = this.claveKato(g);
+      if (!clave) {
+        const emp = Number(g.get('empacadores')?.value) || 0;
+        const peso = Number(g.get('pesoTotal')?.value) || 0;
+        if (emp > 0) {
+          g.get('kgPorEmpacador')?.setValue(Math.round((peso / emp) * 100) / 100, { emitEvent: false });
+        }
+        continue;
+      }
+      porKato.set(clave, [...(porKato.get(clave) ?? []), g]);
+    }
+    for (const filas of porKato.values()) {
+      const empacadores = Number(filas[0].get('empacadores')?.value) || 0;
+      const peso = filas.reduce((t, g) => t + (Number(g.get('pesoTotal')?.value) || 0), 0);
+      const kg = empacadores > 0 ? Math.round((peso / empacadores) * 100) / 100 : 0;
+      for (const g of filas) {
+        g.get('empacadores')?.setValue(empacadores, { emitEvent: false });
+        g.get('kgPorEmpacador')?.setValue(kg, { emitEvent: false });
+      }
+    }
   }
 
   /** Rend/persona = jabas / personas (siempre calculado, igual que en el reporte). */
@@ -438,9 +494,11 @@ export class CorteFormComponent {
 
   eliminarDetalle(index: number): void {
     this.detalles.removeAt(index);
+    this.sincronizarKatos();
   }
 
   private construirRequest(): CorteRequest {
+    if (!this.esVid()) this.sincronizarKatos();
     const raw = this.form.getRawValue();
 
     return {
@@ -457,7 +515,7 @@ export class CorteFormComponent {
         katoNombre: null,
         variedadId: d.variedadId,
         variedadNombre: null,
-        jabas: d.jabas,
+        jabas: Number(d.jabas) || 0,
         pesoTotal: d.pesoTotal,
         empacadores: d.empacadores,
         kgPorEmpacador: d.kgPorEmpacador,
