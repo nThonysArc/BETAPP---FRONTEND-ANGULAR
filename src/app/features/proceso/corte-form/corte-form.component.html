@@ -73,106 +73,110 @@
           </mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
-          <div formArrayName="detalles">
-            @for (grupo of detalles.controls; track $index; let i = $index) {
-              <div [formGroupName]="i" class="fila-detalle">
-                <mat-form-field appearance="outline" class="campo-maquina">
-                  <mat-label>{{ esVid() ? 'Modulo' : 'Maquina' }}</mat-label>
-                  <mat-select formControlName="maquinaId">
-                    @for (m of maquinasDisponibles(); track m.id) {
-                      <mat-option [value]="m.id">{{ m.nombre }}</mat-option>
-                    }
-                  </mat-select>
-                  @if (grupo.get('maquinaId')?.hasError('required') && grupo.get('maquinaId')?.touched) {
-                    <mat-error>Requerido</mat-error>
-                  }
-                </mat-form-field>
+          <!-- Los numeros se llenan en una tabla compacta: cada fila ocupa UNA linea y, si no cabe, se
+               desliza de lado (en vez de crecer hacia abajo). La primera columna queda fija. -->
+          <div class="tabla-detalle" role="table" aria-label="Detalle del corte">
+            <div class="fila-detalle encabezado-detalle" role="row">
+              <span class="c-maq" role="columnheader">{{ esVid() ? 'Modulo' : 'Maquina' }}</span>
+              @if (!esVid()) { <span class="c-kato" role="columnheader">Kato</span> }
+              <span class="c-var" role="columnheader">Variedad</span>
+              <span class="c-num" role="columnheader">Jabas</span>
+              @if (!esVid()) { <span class="c-num" role="columnheader">Peso total (kg)</span> }
+              <span class="c-chico" role="columnheader">{{ esVid() ? 'Personas' : 'Empacadores' }}</span>
+              <span class="c-num" role="columnheader">{{ esVid() ? 'Rend / persona' : 'Kg / empacador' }}</span>
+              <span class="c-acc"></span>
+            </div>
 
-                @if (!esVid()) {
-                  <mat-form-field appearance="outline" class="campo-kato">
-                    <mat-label>Kato</mat-label>
-                    <mat-select formControlName="maquinaKatoId">
-                      @for (k of katosDisponiblesPara(grupo.get('maquinaId')?.value); track k.id) {
-                        <mat-option [value]="k.id">{{ k.nombre }}</mat-option>
+            <div formArrayName="detalles">
+              @for (grupo of detalles.controls; track $index; let i = $index) {
+                <div [formGroupName]="i" class="fila-detalle" role="row">
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="c-maq">
+                    <mat-select formControlName="maquinaId" [attr.aria-label]="esVid() ? 'Modulo' : 'Maquina'" placeholder="Elegir">
+                      @for (m of maquinasDisponibles(); track m.id) {
+                        <mat-option [value]="m.id">{{ m.nombre }}</mat-option>
                       }
                     </mat-select>
-                    @if (grupo.get('maquinaKatoId')?.hasError('required') && grupo.get('maquinaKatoId')?.touched) {
+                    @if (grupo.get('maquinaId')?.hasError('required') && grupo.get('maquinaId')?.touched) {
                       <mat-error>Requerido</mat-error>
                     }
                   </mat-form-field>
 
-                }
-
-                <mat-form-field appearance="outline" class="campo-variedad">
-                  <mat-label>Variedad</mat-label>
-                  <mat-select formControlName="variedadId">
-                    @for (v of variedadesDisponibles(); track v.id) {
-                      <mat-option [value]="v.id">{{ v.nombre }}</mat-option>
-                    }
-                  </mat-select>
-                  @if (grupo.get('variedadId')?.hasError('required') && grupo.get('variedadId')?.touched) {
-                    <mat-error>Requerido</mat-error>
+                  @if (!esVid()) {
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="c-kato">
+                      <mat-select formControlName="maquinaKatoId" aria-label="Kato" placeholder="Elegir">
+                        @for (k of katosDisponiblesPara(grupo.get('maquinaId')?.value); track k.id) {
+                          <mat-option [value]="k.id">{{ k.nombre }}</mat-option>
+                        }
+                      </mat-select>
+                      @if (grupo.get('maquinaKatoId')?.hasError('required') && grupo.get('maquinaKatoId')?.touched) {
+                        <mat-error>Requerido</mat-error>
+                      }
+                    </mat-form-field>
                   }
-                </mat-form-field>
 
-                <mat-form-field appearance="outline" class="campo-numero">
-                  <mat-label>Jabas</mat-label>
-                  <input matInput appCalculadoraSumas="Jabas" formControlName="jabas" />
-                  @if (grupo.get('jabas')?.hasError('expresion')) {
-                    <mat-error>Operacion no valida (usa + - *)</mat-error>
-                  }
-                  @if (grupo.get('jabas')?.hasError('min') && grupo.get('jabas')?.touched) {
-                    <mat-error>No puede ser negativo</mat-error>
-                  }
-                </mat-form-field>
-
-                @if (!esVid()) {
-                  <mat-form-field appearance="outline" class="campo-numero">
-                    <mat-label>Peso total (kg)</mat-label>
-                    <input matInput type="number" step="0.1" formControlName="pesoTotal" />
-                    @if (grupo.get('pesoTotal')?.hasError('min') && grupo.get('pesoTotal')?.touched) {
-                      <mat-error>No puede ser negativo</mat-error>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="c-var">
+                    <mat-select formControlName="variedadId" aria-label="Variedad" placeholder="Elegir">
+                      @for (v of variedadesDisponibles(); track v.id) {
+                        <mat-option [value]="v.id">{{ v.nombre }}</mat-option>
+                      }
+                    </mat-select>
+                    @if (grupo.get('variedadId')?.hasError('required') && grupo.get('variedadId')?.touched) {
+                      <mat-error>Requerido</mat-error>
                     }
                   </mat-form-field>
 
-                }
-
-                @if (repiteKato(i)) {
-                  <div class="campo-mismo-equipo" title="Una sola cantidad de empacadores por kato">
-                    <mat-icon>group</mat-icon>
-                    <span>Mismo equipo de la kato: {{ grupo.get('empacadores')?.value }}</span>
-                  </div>
-                } @else {
-                  <mat-form-field appearance="outline" class="campo-numero-chico">
-                    <mat-label>{{ esVid() ? 'Personas' : 'Empacadores' }}</mat-label>
-                    <input matInput type="number" formControlName="empacadores" />
-                    @if (grupo.get('empacadores')?.hasError('min') && grupo.get('empacadores')?.touched) {
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="c-num">
+                    <input matInput appCalculadoraSumas="Jabas" formControlName="jabas" aria-label="Jabas" />
+                    @if (grupo.get('jabas')?.hasError('expresion')) {
+                      <mat-error>Operacion no valida</mat-error>
+                    }
+                    @if (grupo.get('jabas')?.hasError('min') && grupo.get('jabas')?.touched) {
                       <mat-error>No puede ser negativo</mat-error>
                     }
                   </mat-form-field>
 
                   @if (!esVid()) {
-                    <mat-form-field appearance="outline" class="campo-numero">
-                      <mat-label>Kg / empacador</mat-label>
-                      <input matInput type="number" step="0.1" formControlName="kgPorEmpacador" />
-                      @if (grupo.get('kgPorEmpacador')?.hasError('min') && grupo.get('kgPorEmpacador')?.touched) {
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="c-num">
+                      <input matInput type="number" step="0.1" formControlName="pesoTotal" aria-label="Peso total (kg)" />
+                      @if (grupo.get('pesoTotal')?.hasError('min') && grupo.get('pesoTotal')?.touched) {
+                        <mat-error>No puede ser negativo</mat-error>
+                      }
+                    </mat-form-field>
+                  }
+
+                  @if (repiteKato(i)) {
+                    <div class="campo-mismo-equipo" title="Una sola cantidad de empacadores por kato">
+                      <mat-icon>group</mat-icon>
+                      <span>Mismo equipo: {{ grupo.get('empacadores')?.value }}</span>
+                    </div>
+                  } @else {
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="c-chico">
+                      <input matInput type="number" formControlName="empacadores" [attr.aria-label]="esVid() ? 'Personas' : 'Empacadores'" />
+                      @if (grupo.get('empacadores')?.hasError('min') && grupo.get('empacadores')?.touched) {
                         <mat-error>No puede ser negativo</mat-error>
                       }
                     </mat-form-field>
 
-                  } @else {
-                    <div class="campo-rendimiento" title="Rendimiento por persona = jabas / personas">
-                      <span class="rend-etiqueta">Rend / persona</span>
-                      <strong>{{ rendimiento(grupo) ?? '—' }}</strong>
-                    </div>
+                    @if (!esVid()) {
+                      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="c-num">
+                        <input matInput type="number" step="0.1" formControlName="kgPorEmpacador" aria-label="Kg por empacador" />
+                        @if (grupo.get('kgPorEmpacador')?.hasError('min') && grupo.get('kgPorEmpacador')?.touched) {
+                          <mat-error>No puede ser negativo</mat-error>
+                        }
+                      </mat-form-field>
+                    } @else {
+                      <div class="campo-rendimiento c-num" title="Rendimiento por persona = jabas / personas">
+                        <strong>{{ rendimiento(grupo) ?? '—' }}</strong>
+                      </div>
+                    }
                   }
-                }
 
-                <button mat-icon-button type="button" (click)="eliminarDetalle(i)" title="Eliminar fila">
-                  <mat-icon>delete</mat-icon>
-                </button>
-              </div>
-            }
+                  <button mat-icon-button type="button" class="c-acc" (click)="eliminarDetalle(i)" title="Eliminar fila" aria-label="Eliminar fila">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
+              }
+            </div>
           </div>
 
           <button mat-button type="button" (click)="agregarDetalle()">

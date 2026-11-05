@@ -45,52 +45,64 @@
   }
 }
 
+// ---- Tabla de ingreso de numeros ----
+// Cada fila es UNA linea; si el ancho no alcanza (celular) la tabla se desliza de lado. La primera
+// columna (maquina/modulo) queda fija para no perder de que fila se trata al deslizar.
+.tabla-detalle {
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-2);
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
 .fila-detalle {
   display: flex;
   align-items: center;
+  flex-wrap: nowrap;
   gap: 8px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
+  margin-bottom: 6px;
+  min-width: max-content;
+
+  // Campos compactos de una sola linea (sin etiqueta flotante: los titulos van en el encabezado).
+  --mat-form-field-container-height: 40px;
+  --mat-form-field-container-vertical-padding: 8px;
+  --mat-form-field-outlined-label-text-populated-size: 14px;
 }
 
-// En celular cada campo de texto ocupa su propia línea y las cifras van de a dos;
-// desde 600 px vuelven a repartirse en una sola fila (flex-basis + min-width: 0
-// evita que el ancho mínimo del campo empuje la fila fuera de la pantalla).
-.campo-maquina,
-.campo-kato,
-.campo-variedad {
-  flex: 1 1 100%;
-  min-width: 0;
+.c-maq   { flex: 0 0 176px; width: 176px; } // cabe "MAQUINA 10" completo: el numero de maquina nunca se corta
+.c-kato  { flex: 0 0 100px; width: 100px; }
+.c-var   { flex: 0 0 150px; width: 150px; }
+.c-num   { flex: 0 0 110px; width: 110px; }
+.c-chico { flex: 0 0 96px;  width: 96px; }
+.c-acc   { flex: 0 0 40px;  width: 40px; }
+
+.encabezado-detalle {
+  position: sticky;
+  top: 0;
+  margin-bottom: 4px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+
+  span {
+    padding-left: 4px;
+    white-space: nowrap;
+  }
 }
 
-.campo-numero,
-.campo-numero-chico {
-  flex: 1 1 calc(50% - 4px);
-  min-width: 0;
+// Primera columna fija al deslizar de lado.
+.fila-detalle > .c-maq {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--surface-raised, #fff);
 }
 
-.fila-detalle button[mat-icon-button] {
-  margin-left: auto;
-}
-
-@media (min-width: 600px) {
-  .campo-maquina,
-  .campo-kato,
-  .campo-variedad {
-    flex: 1.3 1 130px;
-  }
-
-  .campo-numero {
-    flex: 1 1 110px;
-  }
-
-  .campo-numero-chico {
-    flex: 0.7 1 90px;
-  }
-
-  .fila-detalle button[mat-icon-button] {
-    margin-left: 0;
-  }
+.campo-rendimiento {
+  display: flex;
+  align-items: center;
+  padding-left: 12px;
 }
 
 .fila-supervisor {
@@ -159,31 +171,6 @@
   }
 }
 
-// Rendimiento por persona (solo Vid): dato calculado, no editable.
-.campo-rendimiento {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  flex: 1 1 calc(50% - 4px);
-  min-width: 0;
-  padding: 0 var(--space-2) var(--space-4);
-
-  .rend-etiqueta {
-    color: var(--ink-muted);
-    font-size: 0.8125rem;
-  }
-
-  strong {
-    font-size: 1.125rem;
-    color: var(--ink);
-  }
-}
-
-@media (min-width: 600px) {
-  .campo-rendimiento {
-    flex: 0.8 1 100px;
-  }
-}
 
 // Avisos de consistencia en vivo (no bloquean el guardado).
 .avisos-vid {
@@ -207,9 +194,10 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  flex: 1 1 200px;
-  min-width: 0;
+  flex: 0 0 214px;
+  width: 206px;
   padding: 0 8px;
+  white-space: nowrap;
   color: var(--ink-muted, #5b6770);
   font-size: 0.875rem;
 }
