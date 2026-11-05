@@ -6,8 +6,8 @@ import { OfflineSyncService } from './offline-sync.service';
 import { InfoConexion, calidadSenal } from './senal.util';
 
 /**
- * Indicador compacto de conexion (semaforo): verde = buena, amarillo = debil, rojo = sin red.
- * Es un circulo pequeno en el borde superior (no una franja) para no tapar tarjetas ni botones;
+ * Indicador de conexion: icono de wifi en la esquina superior derecha. Verde = buena, amarillo = debil
+ * (menos barras), rojo = sin red (wifi tachado). No es una franja ni flota sobre el contenido;
  * al tocarlo se abre el detalle: estado, cuantos envios faltan y las acciones (enviar, reintentar).
  * Sigue cumpliendo el "contrato de confianza": la persona siempre sabe si su trabajo ya llego.
  */
@@ -17,20 +17,21 @@ import { InfoConexion, calidadSenal } from './senal.util';
   imports: [MatButtonModule, MatIconModule],
   template: `
     <div class="indicador" [class.abierto]="abierto()">
-      <button type="button" class="punto-btn" (click)="abierto.set(!abierto())"
-              [attr.aria-label]="'Estado de conexion: ' + etiqueta()" [attr.aria-expanded]="abierto()">
-        <span class="punto" [class]="nivel()"></span>
+      <button type="button" class="icono-btn" [class]="nivel()" (click)="abierto.set(!abierto())"
+              [attr.aria-label]="'Estado de conexion: ' + etiqueta()" [attr.aria-expanded]="abierto()"
+              [title]="etiqueta()">
+        <mat-icon>{{ icono() }}</mat-icon>
         @if (hayError()) {
-          <span class="aviso" aria-hidden="true">!</span>
+          <span class="insignia error" aria-hidden="true">!</span>
         } @else if (store.pendientes().length > 0) {
-          <span class="contador" aria-hidden="true">{{ store.pendientes().length }}</span>
+          <span class="insignia" aria-hidden="true">{{ store.pendientes().length }}</span>
         }
       </button>
 
       @if (abierto()) {
         <div class="detalle" role="status" aria-live="polite">
           <div class="cabecera">
-            <span class="punto" [class]="nivel()"></span>
+            <mat-icon [class]="'icono-detalle ' + nivel()">{{ icono() }}</mat-icon>
             <strong>{{ etiqueta() }}</strong>
             <button mat-icon-button class="cerrar" (click)="abierto.set(false)" aria-label="Cerrar">
               <mat-icon>close</mat-icon>
@@ -50,24 +51,34 @@ import { InfoConexion, calidadSenal } from './senal.util';
     </div>
   `,
   styles: [`
+    /* Esquina superior derecha, a la altura de la barra de titulo (que reserva este hueco: ver styles). */
     .indicador {
-      position: fixed; z-index: 2000; left: 50%; transform: translateX(-50%);
-      top: calc(env(safe-area-inset-top, 0px) + 2px);
+      position: fixed; z-index: 2000; right: 10px;
+      top: calc(env(safe-area-inset-top, 0px) + 12px);
     }
-    .punto-btn {
-      display: flex; align-items: center; gap: 4px; min-width: 32px; height: 32px; padding: 0 8px;
-      justify-content: center; border: 0; border-radius: 16px; cursor: pointer;
-      background: rgba(255,255,255,.88); box-shadow: 0 1px 4px rgba(0,0,0,.3);
+    @media (min-width: 600px) { .indicador { top: calc(env(safe-area-inset-top, 0px) + 16px); right: 16px; } }
+
+    .icono-btn {
+      position: relative; display: grid; place-items: center; width: 32px; height: 32px; padding: 0;
+      border: 0; border-radius: 50%; cursor: pointer;
+      background: rgba(255,255,255,.94); box-shadow: 0 1px 3px rgba(0,0,0,.28);
     }
-    .punto { display: inline-block; width: 12px; height: 12px; border-radius: 50%; flex: none; }
-    .punto.buena { background: #2e9e4f; }
-    .punto.debil { background: #f2b200; }
-    .punto.sin-red { background: #d32f2f; }
-    .contador, .aviso { font-size: 12px; font-weight: 700; color: #333; line-height: 1; }
-    .aviso { color: #d32f2f; }
+    .icono-btn mat-icon { font-size: 20px; width: 20px; height: 20px; line-height: 20px; }
+    .buena mat-icon, .icono-detalle.buena { color: #1f8a3d; }
+    .debil mat-icon, .icono-detalle.debil { color: #c98a00; }
+    .sin-red mat-icon, .icono-detalle.sin-red { color: #d32f2f; }
+    .icono-detalle { font-size: 22px; width: 22px; height: 22px; }
+
+    .insignia {
+      position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px;
+      border-radius: 8px; background: #333; color: #fff; font-size: 10px; font-weight: 700;
+      line-height: 16px; text-align: center; box-sizing: border-box;
+    }
+    .insignia.error { background: #d32f2f; }
+
     .detalle {
-      position: absolute; top: 38px; left: 50%; transform: translateX(-50%);
-      width: min(300px, calc(100vw - 16px)); padding: 10px 12px; border-radius: 10px;
+      position: absolute; top: 40px; right: 0;
+      width: min(300px, calc(100vw - 20px)); padding: 10px 12px; border-radius: 12px;
       background: #fff; color: #222; box-shadow: 0 6px 20px rgba(0,0,0,.3); font-size: 14px;
     }
     .cabecera { display: flex; align-items: center; gap: 8px; }
@@ -87,6 +98,15 @@ export class OfflineBannerComponent {
   readonly errorItem = computed(() => this.store.pendientes().find((p) => p.error) ?? null);
   readonly hayError = computed(() => this.errorItem() !== null);
   readonly nivel = computed(() => calidadSenal(this.store.enLinea(), this.conexion()));
+
+  /** Icono de wifi segun la senal: completo, con pocas barras o tachado. */
+  readonly icono = computed(() => {
+    switch (this.nivel()) {
+      case 'sin-red': return 'wifi_off';
+      case 'debil': return 'wifi_2_bar';
+      default: return 'wifi';
+    }
+  });
 
   readonly etiqueta = computed(() => {
     switch (this.nivel()) {

@@ -29,3 +29,9 @@ html {
 html, body {
   overscroll-behavior-y: contain;
 }
+
+/* Deja libre la esquina superior derecha de las barras de titulo para el icono de conexion
+   (app-offline-banner), asi no se encima con botones ni chips de la barra. */
+mat-toolbar.mat-toolbar-single-row {
+  padding-inline-end: 56px;
+}
