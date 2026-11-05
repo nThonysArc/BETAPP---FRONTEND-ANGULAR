@@ -90,8 +90,19 @@ export interface ReporteCompartirData {
               @if (enviadosAntes() > 0) { <span class="nota">· {{ enviadosAntes() }} previo(s) hoy</span> }
             </mat-checkbox>
             <div class="acciones-correo">
-              <button mat-flat-button color="primary" (click)="descargarBorrador()">
-                <mat-icon>mail</mat-icon> Descargar borrador
+              @if (puedeCompartirArchivo()) {
+                <button mat-flat-button color="primary" (click)="compartirPorCorreo()">
+                  <mat-icon>share</mat-icon> Compartir por correo
+                </button>
+              }
+              <button mat-stroked-button (click)="copiarLista('para')" [disabled]="!para">
+                <mat-icon>content_copy</mat-icon> Copiar Para
+              </button>
+              <button mat-stroked-button (click)="copiarLista('cc')" [disabled]="!cc">
+                <mat-icon>content_copy</mat-icon> Copiar CC
+              </button>
+              <button mat-stroked-button (click)="descargarBorrador()">
+                <mat-icon>mail</mat-icon> Descargar borrador (.eml)
               </button>
               @if (puedeCopiarImagen) {
                 <button mat-stroked-button (click)="copiarParaOutlook()">
@@ -309,6 +320,39 @@ export class ReporteCompartirDialogComponent implements OnDestroy {
 
   private saludoLinea(): string {
     return saludoCorreo(saludoSegunHora(new Date()), this.saludoA);
+  }
+
+  /** Texto del cuerpo para el menu de compartir (sin imagen incrustada: ahi va adjunta). */
+  private cuerpoTexto(): string {
+    return `${this.saludoLinea()}\n${this.fraseCorreo()}\n\nSaludos`;
+  }
+
+  /**
+   * Celular: el menu nativo de compartir. El asunto va en `title` y el cuerpo en `text`, con la imagen adjunta.
+   * Los destinatarios (Para/CC) NO se pueden mandar por este menu (el navegador no lo permite): por eso
+   * existe "Copiar Para y CC" para pegarlos en un toque.
+   */
+  async compartirPorCorreo(): Promise<void> {
+    if (!this.blob || !this.contexto) return;
+    try {
+      await navigator.share({ files: [this.archivo()], title: this.asunto, text: this.cuerpoTexto() });
+    } catch (e) {
+      if ((e as DOMException)?.name !== 'AbortError') {
+        this.snackBar.open('No se pudo abrir el menu de compartir.', 'Cerrar', { duration: 4000 });
+      }
+    }
+  }
+
+  /** Copia solo las direcciones (sin etiquetas) para pegarlas directo en el campo Para o CC. */
+  async copiarLista(campo: 'para' | 'cc'): Promise<void> {
+    const direcciones = (campo === 'para' ? this.para : this.cc)
+      .split(/[;,\n]/).map((x) => x.trim()).filter(Boolean).join('; ');
+    try {
+      await navigator.clipboard.writeText(direcciones);
+      this.snackBar.open(`Copiado. Pégalo en ${campo === 'para' ? 'Para' : 'CC'}.`, 'Cerrar', { duration: 3500 });
+    } catch {
+      this.snackBar.open('No se pudo copiar.', 'Cerrar', { duration: 3000 });
+    }
   }
 
   async descargarBorrador(): Promise<void> {
