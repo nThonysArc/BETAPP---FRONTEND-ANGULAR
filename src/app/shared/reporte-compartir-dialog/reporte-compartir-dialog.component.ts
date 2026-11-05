@@ -129,14 +129,9 @@ export interface ReporteCompartirData {
         <button mat-stroked-button (click)="correoAbierto.set(!correoAbierto())">
           <mat-icon>mail</mat-icon> Correo
         </button>
-        <button mat-stroked-button (click)="abrirWhatsApp()">
+        <button mat-flat-button color="primary" (click)="abrirWhatsApp()">
           <mat-icon>chat</mat-icon> WhatsApp
         </button>
-        @if (puedeCompartirArchivo()) {
-          <button mat-flat-button color="primary" (click)="compartir()">
-            <mat-icon>share</mat-icon> Compartir
-          </button>
-        }
       }
     </mat-dialog-actions>
   `,
