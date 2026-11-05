@@ -173,4 +173,52 @@ describe('capa sin conexion', () => {
     expect(store.pendientes().length).toBe(1);
     expect(store.pendientes()[0].error).toContain('cerrado');
   });
+
+  it('la proyeccion sin red se refleja en el proceso, se encola una sola vez y al volver la red se envia', async () => {
+    const proceso = { id: PID, campanaId: 1, campanaNombre: 'C', fecha: '2026-11-04', estado: 'ABIERTO', totalCortes: 0, proyeccionJabas: null };
+    const pLectura = new Promise((ok) => http.get(`${API}/procesos/${PID}`).subscribe(ok));
+    (await siguiente(`${API}/procesos/${PID}`)).flush(proceso);
+    await pLectura;
+
+    store.enLinea.set(false);
+    await new Promise((ok) => http.put(`${API}/procesos/${PID}/proyeccion`, { jabas: 3000 }).subscribe(ok));
+    await new Promise((ok) => http.put(`${API}/procesos/${PID}/proyeccion`, { jabas: 4000 }).subscribe(ok));
+    expect(store.pendientes().length).toBe(1);
+    expect((store.pendientes()[0].cuerpo as { jabas: number }).jabas).toBe(4000);
+
+    const local = await store.cacheGet<{ proyeccionJabas: number }>(`${API}/procesos/${PID}`);
+    expect(local!.proyeccionJabas).toBe(4000);
+
+    store.enLinea.set(true);
+    const fin = sync.sincronizar();
+    const envio = await siguiente(`${API}/procesos/${PID}/proyeccion`);
+    expect(envio.request.body).toEqual({ jabas: 4000 });
+    envio.flush({ ...proceso, proyeccionJabas: 4000 });
+    await fin;
+    expect(store.pendientes().length).toBe(0);
+  });
+
+  it('el stock anterior sin red usa por defecto el dia previo, se encola una sola vez y al volver la red se envia', async () => {
+    const proceso = { id: PID, campanaId: 1, campanaNombre: 'C', fecha: '2026-11-01', estado: 'ABIERTO', totalCortes: 0 };
+    const pLectura = new Promise((ok) => http.get(`${API}/procesos/${PID}`).subscribe(ok));
+    (await siguiente(`${API}/procesos/${PID}`)).flush(proceso);
+    await pLectura;
+
+    store.enLinea.set(false);
+    await new Promise((ok) => http.put(`${API}/procesos/${PID}/stock-anterior`, { jabas: 300, fecha: null }).subscribe(ok));
+    await new Promise((ok) => http.put(`${API}/procesos/${PID}/stock-anterior`, { jabas: 800, fecha: null }).subscribe(ok));
+    expect(store.pendientes().length).toBe(1);
+
+    const local = await store.cacheGet<{ stockAnteriorJabas: number; stockAnteriorFecha: string }>(`${API}/procesos/${PID}`);
+    expect(local!.stockAnteriorJabas).toBe(800);
+    expect(local!.stockAnteriorFecha).toBe('2026-10-31'); // cruza el cambio de mes
+
+    store.enLinea.set(true);
+    const fin = sync.sincronizar();
+    const envio = await siguiente(`${API}/procesos/${PID}/stock-anterior`);
+    expect(envio.request.body).toEqual({ jabas: 800, fecha: null });
+    envio.flush({ ...proceso, stockAnteriorJabas: 800, stockAnteriorFecha: '2026-10-31' });
+    await fin;
+    expect(store.pendientes().length).toBe(0);
+  });
 });

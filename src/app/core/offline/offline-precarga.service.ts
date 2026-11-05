@@ -55,6 +55,7 @@ export class OfflinePrecargaService {
               supervisores: ok(this.usuarios.listarSupervisores()),
               ingresos: ok(this.ingresos.listar(procesoId)),
               plantilla: ok(this.cortes.obtenerPlantillaSiguiente(procesoId)),
+              arrastre: ok(this.procesos.arrastre(procesoId)),
               lista: ok(this.cortes.listar(procesoId)),
               maquinas: ok(this.maquinas.listarPorCampana(proceso.campanaId))
             })

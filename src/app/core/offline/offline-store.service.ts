@@ -278,6 +278,64 @@ export class OfflineStore {
     return ingreso;
   }
 
+  /**
+   * La proyeccion es un "poner este valor": se refleja ya en el proceso guardado y, si habia una
+   * proyeccion sin enviar, se reemplaza (solo importa la ultima).
+   */
+  async encolarProyeccion(procesoId: number, url: string, jabas: number | null): Promise<ProcesoDiario> {
+    const actualizado = await this.parchearProceso(procesoId, (p) => ({ ...p, proyeccionJabas: jabas }));
+    if (!actualizado) {
+      throw new Error('Este proceso no esta disponible sin conexion. Conectate para guardar la proyeccion.');
+    }
+    const pendientes = await offlineDb.todos<EscrituraPendiente>('outbox');
+    const previa = pendientes.find((p) => p.tipo === 'PROYECCION' && p.procesoId === procesoId);
+    await this.agregarACola({
+      ...(previa ?? {
+        metodo: 'PUT' as const,
+        url,
+        procesoId,
+        tipo: 'PROYECCION' as const,
+        etiqueta: 'Proyeccion del dia',
+        creadoEn: new Date().toISOString()
+      }),
+      cuerpo: { jabas },
+      error: undefined
+    });
+    return actualizado;
+  }
+
+  /**
+   * El stock anterior tambien es un "poner este valor": se refleja ya en el proceso guardado y reemplaza al
+   * que estuviera sin enviar. Si no se indica fecha se usa el dia previo al proceso, igual que hace el servidor.
+   */
+  async encolarStockAnterior(
+    procesoId: number, url: string, jabas: number | null, fecha: string | null
+  ): Promise<ProcesoDiario> {
+    const actualizado = await this.parchearProceso(procesoId, (p) => ({
+      ...p,
+      stockAnteriorJabas: jabas,
+      stockAnteriorFecha: jabas === null ? null : (fecha ?? diaAnterior(p.fecha))
+    }));
+    if (!actualizado) {
+      throw new Error('Este proceso no esta disponible sin conexion. Conectate para guardar el stock anterior.');
+    }
+    const pendientes = await offlineDb.todos<EscrituraPendiente>('outbox');
+    const previa = pendientes.find((p) => p.tipo === 'STOCK_ANTERIOR' && p.procesoId === procesoId);
+    await this.agregarACola({
+      ...(previa ?? {
+        metodo: 'PUT' as const,
+        url,
+        procesoId,
+        tipo: 'STOCK_ANTERIOR' as const,
+        etiqueta: 'Stock anterior',
+        creadoEn: new Date().toISOString()
+      }),
+      cuerpo: { jabas, fecha },
+      error: undefined
+    });
+    return actualizado;
+  }
+
   async encolarCambioEstado(procesoId: number, url: string, cerrar: boolean): Promise<ProcesoDiario> {
     const actualizado = await this.parchearProceso(procesoId, (p) => ({
       ...p,
@@ -358,10 +416,17 @@ export class OfflineStore {
       const cortes = (await this.cacheGet<Corte[]>(claveCortes(pid))) ?? [];
       await this.cachePut(claveCortes(pid), cortes.map((c) => (c.id === real.id ? real : c)));
       await this.cachePut(claveCorte(pid, real.id), real);
-    } else if ((item.tipo === 'PROCESO_CERRAR' || item.tipo === 'PROCESO_REABRIR') && respuesta) {
+    } else if ((item.tipo === 'PROCESO_CERRAR' || item.tipo === 'PROCESO_REABRIR' || item.tipo === 'PROYECCION' || item.tipo === 'STOCK_ANTERIOR') && respuesta) {
       const real = respuesta as ProcesoDiario;
       await this.parchearProceso(pid, () => real);
     }
     await this.cacheDelete(clavePlantilla(pid));
   }
+}
+
+/** "2026-11-04" -> "2026-11-03" (en UTC, para no depender de la zona horaria del dispositivo). */
+function diaAnterior(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
 }

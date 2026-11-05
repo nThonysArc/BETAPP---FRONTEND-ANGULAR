@@ -32,6 +32,14 @@ describe('pegado-excel.util', () => {
     expect(pareceTabla('500\n600')).toBe(true);
   });
 
+  it('soloJabas (Vid): acepta filas con un solo numero y deja los kilos en 0', () => {
+    const vars = [{ id: 1, nombre: 'Sweet Globe' }];
+    expect(parsearPegado('Sweet Globe\t1200', vars)).toEqual([]);
+    expect(parsearPegado('Sweet Globe\t1200', vars, true)).toEqual([
+      { variedadTexto: 'Sweet Globe', variedadId: 1, jabas: 1200, kilos: 0 }
+    ]);
+  });
+
   it('lee una fila Variedad / Jabas / Kilos', () => {
     const r = parsearPegado('VENTURA\t1,200\t9,840.5', VARS);
     expect(r).toEqual([{ variedadTexto: 'VENTURA', variedadId: 1, jabas: 1200, kilos: 9840.5 }]);

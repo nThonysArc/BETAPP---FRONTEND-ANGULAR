@@ -8,7 +8,7 @@ export interface EscrituraPendiente {
   cuerpo: unknown;
   /** Proceso diario al que pertenece (para saber que pantallas deben leer datos locales). */
   procesoId: number | null;
-  tipo: 'CORTE_CREAR' | 'CORTE_EDITAR' | 'MATERIA_PRIMA' | 'PROCESO_CERRAR' | 'PROCESO_REABRIR';
+  tipo: 'CORTE_CREAR' | 'CORTE_EDITAR' | 'MATERIA_PRIMA' | 'PROYECCION' | 'STOCK_ANTERIOR' | 'PROCESO_CERRAR' | 'PROCESO_REABRIR';
   /** Para CORTE_CREAR: id temporal (negativo) con el que la pantalla ve el corte mientras no se envia. */
   idTemporal?: number;
   /** Texto corto para mostrar al usuario (ej. "Corte 3"). */

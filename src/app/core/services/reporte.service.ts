@@ -29,7 +29,10 @@ export class ReporteService {
 
   /** Advertencias de consistencia del dia (lista vacia si el producto no usa la plantilla Vid). */
   obtenerAdvertencias(procesoDiarioId: number): Observable<Advertencia[]> {
-    return this.http.get<Advertencia[]>(`${environment.apiUrl}/procesos/${procesoDiarioId}/advertencias`);
+    return this.conRespaldo(
+      this.http.get<Advertencia[]>(`${environment.apiUrl}/procesos/${procesoDiarioId}/advertencias`),
+      () => this.local.advertencias(procesoDiarioId)
+    );
   }
 
   /** Avance completo del dia como datos (para la vista en linea). */

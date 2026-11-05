@@ -3,7 +3,7 @@ import { Component, HostListener, inject, signal } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -19,6 +19,7 @@ import { IngresoMateriaPrimaService } from '../../../core/services/ingreso-mater
 import { ProcesoDiarioService } from '../../../core/services/proceso-diario.service';
 import { CampanaService } from '../../../core/services/campana.service';
 import { VariedadService } from '../../../core/services/variedad.service';
+import { ProductoService } from '../../../core/services/producto.service';
 import { IngresoMateriaPrima } from '../../../core/models/ingreso-materia-prima.model';
 import { Variedad } from '../../../core/models/variedad.model';
 import { FilaPegada, parsearPegado, pareceTabla } from '../../../shared/pegado-excel/pegado-excel.util';
@@ -51,6 +52,7 @@ export class IngresoMateriaPrimaComponent {
   private readonly procesoDiarioService = inject(ProcesoDiarioService);
   private readonly campanaService = inject(CampanaService);
   private readonly variedadService = inject(VariedadService);
+  private readonly productoService = inject(ProductoService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -60,13 +62,35 @@ export class IngresoMateriaPrimaComponent {
   readonly variedadesDisponibles = signal<Variedad[]>([]);
   readonly cargando = signal(true);
   readonly guardando = signal(false);
-  readonly columnas = ['variedad', 'jabas', 'kilos', 'pesoPromedio', 'actualizadoEn'];
+  private readonly columnasConKilos = ['variedad', 'jabas', 'kilos', 'pesoPromedio', 'actualizadoEn'];
+  private readonly columnasSoloJabas = ['variedad', 'jabas', 'actualizadoEn'];
 
   private campanaId: number | null = null;
 
+  /** Proyeccion del dia: solo la plantilla Vid la usa (aparece en el encabezado del reporte). */
+  readonly esVid = signal(false);
+  readonly guardandoProyeccion = signal(false);
+  readonly proyeccionGuardada = signal<number | null>(null);
+  readonly proyeccion = new FormControl<number | null>(null, [Validators.min(0)]);
+
+  get proyeccionCambio(): boolean {
+    const v = this.proyeccion.value;
+    return (v === null || v === undefined ? null : Number(v)) !== this.proyeccionGuardada();
+  }
+
   /** Filas detectadas al pegar desde Excel, pendientes de confirmar (varias variedades a la vez). */
   readonly pegado = signal<FilaPegada[]>([]);
-  readonly columnasPegado = ['variedad', 'jabas', 'kilos', 'promedio'];
+  private readonly columnasPegadoConKilos = ['variedad', 'jabas', 'kilos', 'promedio'];
+  private readonly columnasPegadoSoloJabas = ['variedad', 'jabas'];
+
+  /** En Vid el avance se maneja por jabas: no se piden ni se muestran los kilos. */
+  get columnas(): string[] {
+    return this.esVid() ? this.columnasSoloJabas : this.columnasConKilos;
+  }
+
+  get columnasPegado(): string[] {
+    return this.esVid() ? this.columnasPegadoSoloJabas : this.columnasPegadoConKilos;
+  }
 
   readonly form = this.fb.group({
     variedadId: [null as number | null, Validators.required],
@@ -88,6 +112,7 @@ export class IngresoMateriaPrimaComponent {
   }
 
   get pesoPromedioPreview(): number | null {
+    if (this.esVid()) return null;
     const { jabas, kilos } = this.form.getRawValue();
     const nJabas = Number(jabas);
     if (!nJabas || nJabas <= 0 || kilos === null) return null;
@@ -100,13 +125,105 @@ export class IngresoMateriaPrimaComponent {
     this.procesoDiarioService.obtener(this.procesoDiarioId).subscribe({
       next: (proceso) => {
         this.campanaId = proceso.campanaId;
+        this.proyeccionGuardada.set(proceso.proyeccionJabas ?? null);
+        this.proyeccion.setValue(proceso.proyeccionJabas ?? null);
+        this.fechaProceso = proceso.fecha;
+        this.stockAnteriorGuardado.set(this.stockDe(proceso));
+        this.aplicarStockAlFormulario(proceso);
         this.campanaService.obtener(proceso.campanaId).subscribe({
           next: (campana) => {
+            this.productoService.listar().subscribe({
+              next: (productos) => {
+                const vid = productos.find((p) => p.id === campana.productoId)?.plantillaReporte === 'VID';
+                this.esVid.set(vid);
+                this.form.controls.kilos.setValidators(vid ? [Validators.min(0)] : [Validators.required, Validators.min(0)]);
+                this.form.controls.kilos.updateValueAndValidity();
+              }
+            });
             this.variedadService.listarPorProducto(campana.productoId).subscribe({
               next: (variedades) => this.variedadesDisponibles.set(variedades)
             });
           }
         });
+      }
+    });
+  }
+
+  /** Stock que quedo de un dia previo (Vid): se digita aqui, junto con la materia prima. */
+  readonly guardandoStock = signal(false);
+  readonly stockAnteriorGuardado = signal<{ jabas: number; fecha: string } | null>(null);
+  readonly stockAnterior = new FormControl<number | null>(null, [Validators.min(0)]);
+  readonly stockAnteriorFecha = new FormControl<string>('', [Validators.required]);
+  private fechaProceso = '';
+
+  private stockDe(p: { stockAnteriorJabas?: number | null; stockAnteriorFecha?: string | null }) {
+    return p.stockAnteriorJabas == null
+      ? null
+      : { jabas: Number(p.stockAnteriorJabas), fecha: p.stockAnteriorFecha ?? '' };
+  }
+
+  /** Por defecto la fecha es el dia anterior al del proceso, pero se puede cambiar. */
+  private aplicarStockAlFormulario(p: { fecha: string; stockAnteriorJabas?: number | null; stockAnteriorFecha?: string | null }): void {
+    const s = this.stockDe(p);
+    this.stockAnterior.setValue(s ? s.jabas : null);
+    this.stockAnteriorFecha.setValue(s?.fecha || diaAnterior(p.fecha));
+  }
+
+  get stockAnteriorCambio(): boolean {
+    const g = this.stockAnteriorGuardado();
+    const v = this.stockAnterior.value;
+    const jabas = v === null || v === undefined || (v as unknown) === '' ? null : Number(v);
+    if (jabas === null) return g !== null;
+    return g === null || g.jabas !== jabas || g.fecha !== this.stockAnteriorFecha.value;
+  }
+
+  guardarStockAnterior(): void {
+    if (this.stockAnterior.invalid || this.stockAnteriorFecha.invalid) return;
+    const bruto = this.stockAnterior.value;
+    const jabas = bruto === null || bruto === undefined || (bruto as unknown) === '' ? null : Number(bruto);
+    if (jabas !== null && !Number.isFinite(jabas)) return;
+    if (jabas !== null && this.fechaProceso && (this.stockAnteriorFecha.value ?? '') >= this.fechaProceso) {
+      this.snackBar.open('La fecha del stock debe ser anterior a la del proceso', 'Cerrar', { duration: 4000 });
+      return;
+    }
+    this.guardandoStock.set(true);
+    this.procesoDiarioService
+      .actualizarStockAnterior(this.procesoDiarioId, jabas, jabas === null ? null : this.stockAnteriorFecha.value)
+      .subscribe({
+        next: (proceso) => {
+          this.guardandoStock.set(false);
+          this.stockAnteriorGuardado.set(this.stockDe(proceso));
+          this.aplicarStockAlFormulario(proceso);
+          this.snackBar.open(jabas === null ? 'Stock anterior quitado' : 'Stock anterior guardado', 'Cerrar', { duration: 2500 });
+        },
+        error: (e) => {
+          this.guardandoStock.set(false);
+          this.snackBar.open(e?.error?.message ?? 'No se pudo guardar el stock anterior', 'Cerrar', { duration: 4000 });
+        }
+      });
+  }
+
+  quitarStockAnterior(): void {
+    this.stockAnterior.setValue(null);
+    this.guardarStockAnterior();
+  }
+
+  guardarProyeccion(): void {
+    if (this.proyeccion.invalid) return;
+    const bruto = this.proyeccion.value;
+    const jabas = bruto === null || bruto === undefined || (bruto as unknown) === '' ? null : Number(bruto);
+    if (jabas !== null && !Number.isFinite(jabas)) return;
+    this.guardandoProyeccion.set(true);
+    this.procesoDiarioService.actualizarProyeccion(this.procesoDiarioId, jabas).subscribe({
+      next: (proceso) => {
+        this.guardandoProyeccion.set(false);
+        this.proyeccionGuardada.set(proceso.proyeccionJabas ?? null);
+        this.proyeccion.setValue(proceso.proyeccionJabas ?? null);
+        this.snackBar.open('Proyección guardada', 'Cerrar', { duration: 2500 });
+      },
+      error: (e) => {
+        this.guardandoProyeccion.set(false);
+        this.snackBar.open(e?.error?.message ?? 'No se pudo guardar la proyección', 'Cerrar', { duration: 4000 });
       }
     });
   }
@@ -140,10 +257,11 @@ export class IngresoMateriaPrimaComponent {
   procesarPegado(texto: string): void {
     const filas = parsearPegado(
       texto,
-      this.variedadesDisponibles().map((v) => ({ id: v.id, nombre: v.nombre }))
+      this.variedadesDisponibles().map((v) => ({ id: v.id, nombre: v.nombre })),
+      this.esVid()
     );
     if (filas.length === 0) {
-      this.snackBar.open('No se encontraron jabas y kilos en lo pegado', 'Cerrar', { duration: 4000 });
+      this.snackBar.open('No se encontraron jabas' + (this.esVid() ? '' : ' y kilos') + ' en lo pegado', 'Cerrar', { duration: 4000 });
       return;
     }
     // Una sola fila: se llena el formulario (si no trae variedad, se respeta la elegida) para revisar y guardar.
@@ -216,7 +334,7 @@ export class IngresoMateriaPrimaComponent {
     this.form.patchValue({
       variedadId: ingreso.variedadId,
       jabas: ingreso.jabas,
-      kilos: ingreso.kilos
+      kilos: this.esVid() ? null : ingreso.kilos
     });
   }
 
@@ -233,7 +351,7 @@ export class IngresoMateriaPrimaComponent {
       .actualizar(this.procesoDiarioId, {
         variedadId: raw.variedadId!,
         jabas: Number(raw.jabas),
-        kilos: raw.kilos!
+        kilos: this.esVid() ? 0 : raw.kilos!
       })
       .subscribe({
         next: () => {
@@ -256,4 +374,12 @@ export class IngresoMateriaPrimaComponent {
       this.router.navigate(['/']);
     }
   }
+}
+
+/** "2026-11-04" -> "2026-11-03" (UTC: no depende de la zona horaria del dispositivo). */
+function diaAnterior(iso: string): string {
+  if (!iso) return '';
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
 }

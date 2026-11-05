@@ -81,10 +81,10 @@ export function pareceTabla(texto: string): boolean {
 
 /**
  * Cada linea con al menos un numero genera una fila: el texto es la variedad; el primer numero son las
- * jabas y el segundo los kilos (un tercero, p. ej. el promedio, se ignora). Encabezados y lineas vacias
+ * jabas y el segundo los kilos (con soloJabas, Vid, solo las jabas y kilos = 0) (un tercero, p. ej. el promedio, se ignora). Encabezados y lineas vacias
  * se descartan. Si una variedad aparece varias veces se SUMA (el sistema guarda el acumulado por variedad).
  */
-export function parsearPegado(texto: string, variedades: VariedadRef[]): FilaPegada[] {
+export function parsearPegado(texto: string, variedades: VariedadRef[], soloJabas = false): FilaPegada[] {
   const filas: FilaPegada[] = [];
   for (const linea of texto.replace(/\r/g, '').split('\n')) {
     if (!linea.trim()) continue;
@@ -96,12 +96,13 @@ export function parsearPegado(texto: string, variedades: VariedadRef[]): FilaPeg
       if (n !== null) numeros.push(n);
       else if (variedadTexto === null && /[\p{L}]/u.test(c) && !/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/.test(c)) variedadTexto = c;
     }
-    if (numeros.length < 2) continue; // encabezado, titulo o fila incompleta
+    // Encabezado, titulo o fila incompleta. En Vid solo se digitan jabas (los kilos no se manejan).
+    if (numeros.length < (soloJabas ? 1 : 2)) continue;
     filas.push({
       variedadTexto,
       variedadId: variedadTexto ? buscarVariedad(variedadTexto, variedades) : null,
       jabas: numeros[0],
-      kilos: numeros[1]
+      kilos: soloJabas ? 0 : numeros[1]
     });
   }
 

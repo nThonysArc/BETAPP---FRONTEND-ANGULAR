@@ -24,6 +24,8 @@ type Escritura =
   | { tipo: 'CORTE_CREAR'; procesoId: number }
   | { tipo: 'CORTE_EDITAR'; procesoId: number; corteId: number }
   | { tipo: 'MATERIA_PRIMA'; procesoId: number }
+  | { tipo: 'PROYECCION'; procesoId: number }
+  | { tipo: 'STOCK_ANTERIOR'; procesoId: number }
   | { tipo: 'PROCESO_CERRAR' | 'PROCESO_REABRIR'; procesoId: number };
 
 function clasificar(req: HttpRequest<unknown>): Escritura | null {
@@ -37,6 +39,12 @@ function clasificar(req: HttpRequest<unknown>): Escritura | null {
   }
   if (req.method === 'PUT' && (m = url.match(/\/procesos\/(\d+)\/materia-prima$/))) {
     return { tipo: 'MATERIA_PRIMA', procesoId: Number(m[1]) };
+  }
+  if (req.method === 'PUT' && (m = url.match(/\/procesos\/(\d+)\/proyeccion$/))) {
+    return { tipo: 'PROYECCION', procesoId: Number(m[1]) };
+  }
+  if (req.method === 'PUT' && (m = url.match(/\/procesos\/(\d+)\/stock-anterior$/))) {
+    return { tipo: 'STOCK_ANTERIOR', procesoId: Number(m[1]) };
   }
   if (req.method === 'POST' && (m = url.match(/\/procesos\/(\d+)\/cerrar$/))) {
     return { tipo: 'PROCESO_CERRAR', procesoId: Number(m[1]) };
@@ -148,6 +156,12 @@ async function encolar(store: OfflineStore, e: Escritura, req: HttpRequest<unkno
       return store.encolarCorteEditado(e.procesoId, e.corteId, req.url, req.body as CorteRequest);
     case 'MATERIA_PRIMA':
       return store.encolarMateriaPrima(e.procesoId, req.url, req.body as IngresoMateriaPrimaRequest);
+    case 'PROYECCION':
+      return store.encolarProyeccion(e.procesoId, req.url, (req.body as { jabas: number | null }).jabas);
+    case 'STOCK_ANTERIOR': {
+      const c = req.body as { jabas: number | null; fecha: string | null };
+      return store.encolarStockAnterior(e.procesoId, req.url, c.jabas, c.fecha);
+    }
     case 'PROCESO_CERRAR':
       return store.encolarCambioEstado(e.procesoId, req.url, true);
     case 'PROCESO_REABRIR':

@@ -6,11 +6,74 @@
 </mat-toolbar>
 
 <div class="contenido">
+  @if (esVid()) {
+    <mat-card class="seccion-form">
+      <mat-card-header>
+        <mat-card-title>Proyección del día</mat-card-title>
+        <mat-card-subtitle>Jabas que se espera procesar hoy. Sale en el encabezado del reporte.</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="form-grid">
+          <mat-form-field appearance="outline">
+            <mat-label>Proyección (jabas)</mat-label>
+            <input matInput appCalculadoraSumas="Proyeccion" [formControl]="proyeccion" />
+            @if (proyeccion.hasError('min')) {
+              <mat-error>No puede ser negativo</mat-error>
+            }
+          </mat-form-field>
+          <button mat-flat-button color="primary" type="button"
+                  [disabled]="proyeccion.invalid || !proyeccionCambio || guardandoProyeccion()"
+                  (click)="guardarProyeccion()">
+            <mat-icon>save</mat-icon> Guardar proyección
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="seccion-form">
+      <mat-card-header>
+        <mat-card-title>Stock anterior</mat-card-title>
+        <mat-card-subtitle>
+          Fruta que quedó de un día previo. Sale aparte del ingreso de hoy en el reporte. Déjalo vacío si no hubo.
+        </mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="form-grid">
+          <mat-form-field appearance="outline">
+            <mat-label>Fecha del stock</mat-label>
+            <input matInput type="date" [formControl]="stockAnteriorFecha" />
+            @if (stockAnteriorFecha.hasError('required')) {
+              <mat-error>Indica la fecha</mat-error>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Stock anterior (jabas)</mat-label>
+            <input matInput appCalculadoraSumas="StockAnterior" [formControl]="stockAnterior" />
+            @if (stockAnterior.hasError('min')) {
+              <mat-error>No puede ser negativo</mat-error>
+            }
+          </mat-form-field>
+          <button mat-flat-button color="primary" type="button"
+                  [disabled]="stockAnterior.invalid || stockAnteriorFecha.invalid || !stockAnteriorCambio || guardandoStock()"
+                  (click)="guardarStockAnterior()">
+            <mat-icon>save</mat-icon> Guardar stock anterior
+          </button>
+          @if (stockAnteriorGuardado()) {
+            <button mat-button type="button" [disabled]="guardandoStock()" (click)="quitarStockAnterior()">
+              Quitar
+            </button>
+          }
+        </div>
+      </mat-card-content>
+    </mat-card>
+  }
+
   <mat-card class="seccion-form">
     <mat-card-header>
       <mat-card-title>Actualizar acumulado</mat-card-title>
       <mat-card-subtitle>
         Total acumulado reportado por Recepcion (no un incremento).
+        @if (esVid()) { Es el ingreso de hoy; el stock de días previos va en su propia sección. }
       </mat-card-subtitle>
     </mat-card-header>
 
@@ -42,18 +105,20 @@
           }
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Kilos acumulados</mat-label>
-          <input matInput type="number" step="0.1" formControlName="kilos" />
-          @if (form.get('kilos')?.hasError('required') && form.get('kilos')?.touched) {
-            <mat-error>Este campo es obligatorio</mat-error>
-          }
-          @if (form.get('kilos')?.hasError('min') && form.get('kilos')?.touched) {
-            <mat-error>No puede ser negativo</mat-error>
-          }
-        </mat-form-field>
+        @if (!esVid()) {
+          <mat-form-field appearance="outline">
+            <mat-label>Kilos acumulados</mat-label>
+            <input matInput type="number" step="0.1" formControlName="kilos" />
+            @if (form.get('kilos')?.hasError('required') && form.get('kilos')?.touched) {
+              <mat-error>Este campo es obligatorio</mat-error>
+            }
+            @if (form.get('kilos')?.hasError('min') && form.get('kilos')?.touched) {
+              <mat-error>No puede ser negativo</mat-error>
+            }
+          </mat-form-field>
+        }
 
-        @if (pesoPromedioPreview !== null) {
+        @if (!esVid() && pesoPromedioPreview !== null) {
           <p class="preview">
             Peso promedio por jaba: <strong>{{ pesoPromedioPreview }} kg</strong>
           </p>
@@ -74,7 +139,7 @@
     <mat-card-header>
       <mat-card-title>Pegar desde Excel</mat-card-title>
       <mat-card-subtitle>
-        Copia Variedad, Jabas y Kilos del Excel y pega (Ctrl+V).
+        @if (esVid()) { Copia Variedad y Jabas del Excel y pega (Ctrl+V). } @else { Copia Variedad, Jabas y Kilos del Excel y pega (Ctrl+V). }
       </mat-card-subtitle>
     </mat-card-header>
     <mat-card-content>
@@ -116,7 +181,9 @@
           <tr mat-row *matRowDef="let row; columns: columnasPegado;"></tr>
         </table>
         <div class="acciones-pegado">
-          <button mat-button type="button" (click)="intercambiarPegado()">Intercambiar jabas y kilos</button>
+          @if (!esVid()) {
+            <button mat-button type="button" (click)="intercambiarPegado()">Intercambiar jabas y kilos</button>
+          }
           <button mat-button type="button" (click)="descartarPegado()">Descartar</button>
           <button mat-flat-button color="primary" type="button" [disabled]="!pegadoListo || guardando()" (click)="guardarPegado()">
             Guardar todo
@@ -168,8 +235,10 @@
       <div class="total-general">
         <span class="total-titulo">TOTAL GENERAL</span>
         <span>Jabas: <strong>{{ totalJabas | number: '1.0-0' }}</strong></span>
-        <span>Kilos: <strong>{{ totalKilos | number: '1.0-1' }}</strong></span>
-        <span>Peso prom./jaba: <strong>{{ pesoPromedioGeneral !== null ? (pesoPromedioGeneral | number: '1.0-3') : '-' }}</strong> kg</span>
+        @if (!esVid()) {
+          <span>Kilos: <strong>{{ totalKilos | number: '1.0-1' }}</strong></span>
+          <span>Peso prom./jaba: <strong>{{ pesoPromedioGeneral !== null ? (pesoPromedioGeneral | number: '1.0-3') : '-' }}</strong> kg</span>
+        }
       </div>
     }
 
