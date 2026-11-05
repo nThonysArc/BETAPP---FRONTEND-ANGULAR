@@ -15,7 +15,7 @@ import { CorteService } from '../../core/services/corte.service';
 import { numerosDeHora } from '../../core/utils/horas-corte.util';
 import { CampanaService } from '../../core/services/campana.service';
 import { ProcesoDiarioService } from '../../core/services/proceso-diario.service';
-import { construirMensajeReporte, nombreProcesoParaMensaje, procesoPorDefecto } from '../../core/utils/mensaje-reporte.util';
+import { construirMensajeReporte, esProcesoVid, nombreProcesoParaMensaje, procesoPorDefecto } from '../../core/utils/mensaje-reporte.util';
 import {
   asuntoBase, construirEml, fechaConPuntos, htmlCorreo, nombreProcesoCorreo, nuevoMessageId,
   saludoCorreo
@@ -203,19 +203,22 @@ export class ReporteCompartirDialogComponent implements OnDestroy {
       next: ({ imagen, avance, cortes, producto }) => {
         this.blob = imagen;
         this.urlImagen.set(URL.createObjectURL(imagen));
-        // Arandano: la hora sale del avance. Vid no tiene vista en linea (avance null): se cuenta
-        // con los cortes, igual que el reporte (el almuerzo general no ocupa numero de hora).
+        // La hora se cuenta con los cortes, igual que en el reporte (el almuerzo general no ocupa numero de
+        // hora), asi Arandano y Vid dicen lo mismo. Solo si no hay cortes se recurre al avance en linea.
         let ultima: number | null = null;
-        const horas = (avance?.avance?.horas ?? []).filter((h) => !h.pausa);
-        if (horas.length) {
-          ultima = horas[horas.length - 1].numero;
-        } else if (cortes?.length) {
+        if (cortes?.length) {
           const numeros = [...numerosDeHora(cortes).values()].filter((n): n is number => n !== null);
           ultima = numeros.length ? Math.max(...numeros) : null;
         }
+        if (ultima === null) {
+          const horas = (avance?.avance?.horas ?? []).filter((h) => !h.pausa && h.numero != null);
+          if (horas.length) ultima = horas[horas.length - 1].numero;
+        }
+        const vid = esProcesoVid(avance?.plantilla, producto?.producto);
         this.mensaje = construirMensajeReporte(
           new Date(), ultima,
-          producto ? nombreProcesoParaMensaje(producto.producto) : procesoPorDefecto(avance?.plantilla)
+          producto ? nombreProcesoParaMensaje(producto.producto) : procesoPorDefecto(avance?.plantilla),
+          vid
         );
         if (producto) this.prepararCorreo(producto);
         this.cargando.set(false);

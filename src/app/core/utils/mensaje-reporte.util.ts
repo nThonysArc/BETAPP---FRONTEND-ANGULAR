@@ -39,12 +39,19 @@ export function procesoPorDefecto(plantilla: 'ARANDANO' | 'VID' | null | undefin
   return plantilla === 'VID' ? 'selección Vid' : 'arándano fresco';
 }
 
+/** Vid se llama "Uva" (u otro nombre) en el catalogo; el mensaje siempre dice "Selección Vid". */
+export function esProcesoVid(plantilla: 'ARANDANO' | 'VID' | null | undefined, nombreProducto: string | null | undefined): boolean {
+  return plantilla === 'VID' || (!plantilla && /\b(vid|uva)\b/i.test(nombreProducto ?? ''));
+}
+
 /**
- * Mensaje listo para enviar, mismo formato para todo cultivo/proceso:
- *   "Buenas tardes, se envía avance por hora de proceso de <proceso>:\n1ra hora"
+ * Mensaje listo para enviar:
+ *   Arandano: "Buenas tardes, se envía avance por hora de proceso de arándano fresco:\n1ra hora"
+ *   Vid:      "Buenas tardes, se envía avance por hora de Selección Vid:\n1ra hora"
  * `numeroHora` es la ultima hora registrada (null si aun no hay: se omite esa linea).
  */
-export function construirMensajeReporte(ahora: Date, numeroHora: number | null, proceso: string): string {
-  const base = `${saludoSegunHora(ahora)}, se envía avance por hora de proceso de ${proceso}`;
+export function construirMensajeReporte(ahora: Date, numeroHora: number | null, proceso: string, vid = false): string {
+  const destino = vid ? 'Selección Vid' : `proceso de ${proceso}`;
+  const base = `${saludoSegunHora(ahora)}, se envía avance por hora de ${destino}`;
   return numeroHora != null ? `${base}:\n${textoHora(numeroHora)}` : `${base}.`;
 }
