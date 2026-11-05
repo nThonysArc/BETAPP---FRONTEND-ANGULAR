@@ -45,64 +45,179 @@
   }
 }
 
-// ---- Tabla de ingreso de numeros ----
-// Cada fila es UNA linea; si el ancho no alcanza (celular) la tabla se desliza de lado. La primera
-// columna (maquina/modulo) queda fija para no perder de que fila se trata al deslizar.
-.tabla-detalle {
+// ---- Carrusel de tarjetas: una por maquina ----
+// En celular se desliza de lado y cada tarjeta "se pega" al centro; en PC todas se ven juntas.
+.nav-maquinas {
+  display: flex;
+  gap: var(--space-2);
   overflow-x: auto;
   padding-bottom: var(--space-2);
-  margin-bottom: var(--space-2);
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-x: contain;
+  scrollbar-width: none;
 }
 
-.fila-detalle {
-  display: flex;
-  align-items: center;
-  flex-wrap: nowrap;
-  gap: 8px;
-  margin-bottom: 6px;
-  min-width: max-content;
+.chip-maquina {
+  flex: 0 0 auto;
+  border: 1px solid var(--hairline);
+  background: transparent;
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
 
-  // Campos compactos de una sola linea (sin etiqueta flotante: los titulos van en el encabezado).
-  --mat-form-field-container-height: 40px;
-  --mat-form-field-container-vertical-padding: 8px;
-  --mat-form-field-outlined-label-text-populated-size: 14px;
-}
-
-.c-maq   { flex: 0 0 176px; width: 176px; } // cabe "MAQUINA 10" completo: el numero de maquina nunca se corta
-.c-kato  { flex: 0 0 100px; width: 100px; }
-.c-var   { flex: 0 0 150px; width: 150px; }
-.c-num   { flex: 0 0 110px; width: 110px; }
-.c-chico { flex: 0 0 96px;  width: 96px; }
-.c-acc   { flex: 0 0 40px;  width: 40px; }
-
-.encabezado-detalle {
-  position: sticky;
-  top: 0;
-  margin-bottom: 4px;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--ink-muted);
-
-  span {
-    padding-left: 4px;
-    white-space: nowrap;
+  &.activa {
+    background: var(--mat-sys-primary, #1b5e20);
+    color: var(--mat-sys-on-primary, #fff);
+    border-color: transparent;
+    font-weight: 700;
   }
 }
 
-// Primera columna fija al deslizar de lado.
-.fila-detalle > .c-maq {
-  position: sticky;
-  left: 0;
-  z-index: 2;
-  background: var(--surface-raised, #fff);
+.carrusel {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 2px var(--space-3);
+}
+
+.tarjeta-maquina {
+  flex: 0 0 88%;
+  scroll-snap-align: center;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--surface-sunken, transparent);
+
+  &.activa {
+    border-color: var(--mat-sys-primary, #1b5e20);
+  }
+}
+
+.cabecera-tarjeta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+
+  h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .elegir-maquina {
+    width: 100%;
+  }
+}
+
+.total-tarjeta {
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+}
+
+.fila-tarjeta {
+  border-top: 1px solid var(--hairline);
+  padding-top: var(--space-2);
+
+  &:first-of-type {
+    border-top: 0;
+    padding-top: 0;
+  }
+}
+
+.titulo-fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.rejilla-fila {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+
+  mat-form-field,
+  .campo-rendimiento {
+    min-width: 0;
+  }
+
+  .ancho-completo {
+    grid-column: 1 / -1;
+  }
+}
+
+.agregar-en-tarjeta {
+  align-self: flex-start;
+}
+
+.tarjeta-nueva {
+  flex: 0 0 60%;
+  scroll-snap-align: center;
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 2px dashed var(--hairline);
+  border-radius: var(--radius-lg, 16px);
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+@media (min-width: 900px) {
+  .carrusel {
+    flex-wrap: wrap;
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+
+  .tarjeta-maquina {
+    flex: 1 1 380px;
+    max-width: calc(50% - 6px);
+  }
+
+  .tarjeta-nueva {
+    flex: 1 1 380px;
+    max-width: calc(50% - 6px);
+  }
+
+  .nav-maquinas {
+    display: none;
+  }
 }
 
 .campo-rendimiento {
   display: flex;
-  align-items: center;
-  padding-left: 12px;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 var(--space-2);
+
+  .rend-etiqueta {
+    color: var(--ink-muted);
+    font-size: 0.8125rem;
+  }
+
+  strong {
+    font-size: 1.125rem;
+    color: var(--ink);
+  }
 }
 
 .fila-supervisor {
@@ -194,10 +309,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  flex: 0 0 214px;
-  width: 206px;
   padding: 0 8px;
-  white-space: nowrap;
   color: var(--ink-muted, #5b6770);
   font-size: 0.875rem;
 }

@@ -1,5 +1,5 @@
 import { CalculadoraSumasDirective } from '../../../shared/calculadora-sumas/calculadora-sumas.directive';
-import { Component, inject, signal } from '@angular/core';
+import { Component, ElementRef, ViewChild, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AbstractControl, FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -33,6 +33,12 @@ import { MaquinaKato } from '../../../core/models/maquina-kato.model';
 import { Variedad } from '../../../core/models/variedad.model';
 import { Producto } from '../../../core/models/producto.model';
 import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading-spinner.component';
+
+/** Una tarjeta del carrusel: las filas (indices dentro del FormArray) de una misma maquina/modulo. */
+export interface GrupoMaquina {
+  maquinaId: number | null;
+  indices: number[];
+}
 
 @Component({
   selector: 'app-corte-form',
@@ -80,6 +86,11 @@ export class CorteFormComponent {
   readonly cargandoPlantilla = signal(true);
   readonly guardando = signal(false);
   readonly maquinasDisponibles = signal<Maquina[]>([]);
+
+  /** Tarjetas del carrusel (una por maquina). Se recalcula cuando cambian las filas o su maquina. */
+  readonly grupos = signal<GrupoMaquina[]>([]);
+  readonly tarjetaActiva = signal(0);
+  @ViewChild('carrusel') private carrusel?: ElementRef<HTMLElement>;
   readonly supervisoresDisponibles = signal<UsuarioResumen[]>([]);
   readonly variedadesDisponibles = signal<Variedad[]>([]);
   readonly hayIngresoRegistrado = signal(false);
@@ -339,7 +350,8 @@ export class CorteFormComponent {
     jabas = 0,
     pesoTotal = 0,
     empacadores = 0,
-    kgPorEmpacador = 0
+    kgPorEmpacador = 0,
+    posicion?: number
   ): void {
     const grupo = this.fb.group({
       maquinaId: [maquinaId, Validators.required],
@@ -353,7 +365,86 @@ export class CorteFormComponent {
 
     this.configurarAutoCalculo(grupo);
     this.asegurarSupervisor(maquinaId);
-    this.detalles.push(grupo);
+    if (posicion === undefined) {
+      this.detalles.push(grupo);
+    } else {
+      this.detalles.insert(posicion, grupo);
+    }
+    this.refrescarGrupos();
+  }
+
+  /** Agrupa las filas por maquina (orden de aparicion). Las filas sin maquina eligen cada una su tarjeta. */
+  refrescarGrupos(): void {
+    const grupos: GrupoMaquina[] = [];
+    this.detalles.controls.forEach((g, i) => {
+      const id = g.get('maquinaId')?.value as number | null;
+      const existente = id !== null && id !== undefined ? grupos.find((x) => x.maquinaId === id) : undefined;
+      if (existente) existente.indices.push(i);
+      else grupos.push({ maquinaId: id ?? null, indices: [i] });
+    });
+    this.grupos.set(grupos);
+    if (this.tarjetaActiva() >= grupos.length) this.tarjetaActiva.set(Math.max(0, grupos.length - 1));
+  }
+
+  /** Atajo para la plantilla: el FormGroup de la fila `i` del FormArray. */
+  grupo(i: number): AbstractControl {
+    return this.detalles.at(i);
+  }
+
+  nombreMaquina(id: number | null): string {
+    return id === null ? 'Elegir maquina' : this.maquinasDisponibles().find((m) => m.id === id)?.nombre ?? `#${id}`;
+  }
+
+  /** Nueva fila (otro kato/variedad) dentro de la tarjeta de una maquina; queda pegada a sus filas. */
+  agregarFilaEnGrupo(g: GrupoMaquina): void {
+    const ultimo = g.indices[g.indices.length - 1];
+    this.agregarDetalle(g.maquinaId, null, null, 0, 0, 0, 0, ultimo + 1);
+  }
+
+  /** Nueva tarjeta vacia al final del carrusel. */
+  agregarMaquina(): void {
+    this.agregarDetalle();
+    setTimeout(() => this.irATarjeta(this.grupos().length - 1));
+  }
+
+  /** Elegir la maquina de una tarjeta nueva (todas sus filas pasan a esa maquina). */
+  asignarMaquinaAGrupo(g: GrupoMaquina, maquinaId: number): void {
+    g.indices.forEach((i) => this.detalles.at(i).get('maquinaId')?.setValue(maquinaId));
+  }
+
+  totalGrupo(g: GrupoMaquina): { jabas: number; peso: number } {
+    let jabas = 0;
+    let peso = 0;
+    for (const i of g.indices) {
+      jabas += Number(this.detalles.at(i).get('jabas')?.value) || 0;
+      peso += Number(this.detalles.at(i).get('pesoTotal')?.value) || 0;
+    }
+    return { jabas, peso: Math.round(peso * 100) / 100 };
+  }
+
+  irATarjeta(indice: number): void {
+    const el = this.carrusel?.nativeElement;
+    const tarjeta = el?.querySelectorAll<HTMLElement>('.tarjeta-maquina')[indice];
+    if (!el || !tarjeta) return;
+    el.scrollTo({ left: tarjeta.offsetLeft + tarjeta.offsetWidth / 2 - el.clientWidth / 2, behavior: 'smooth' });
+    this.tarjetaActiva.set(indice);
+  }
+
+  /** Marca como activa la tarjeta mas cercana al centro mientras se desliza. */
+  alDeslizar(): void {
+    const el = this.carrusel?.nativeElement;
+    if (!el) return;
+    const centro = el.scrollLeft + el.clientWidth / 2;
+    let mejor = 0;
+    let distancia = Infinity;
+    el.querySelectorAll<HTMLElement>('.tarjeta-maquina').forEach((t, i) => {
+      const d = Math.abs(t.offsetLeft + t.offsetWidth / 2 - centro);
+      if (d < distancia) {
+        distancia = d;
+        mejor = i;
+      }
+    });
+    this.tarjetaActiva.set(mejor);
   }
 
   private configurarAutoCalculo(grupo: FormGroup): void {
@@ -361,6 +452,7 @@ export class CorteFormComponent {
       grupo.get('maquinaKatoId')?.setValue(null);
       this.asegurarSupervisor(maquinaId);
       this.sincronizarKatos();
+      this.refrescarGrupos();
     });
 
     const recalcularPesoTotal = () => {
@@ -495,6 +587,7 @@ export class CorteFormComponent {
   eliminarDetalle(index: number): void {
     this.detalles.removeAt(index);
     this.sincronizarKatos();
+    this.refrescarGrupos();
   }
 
   private construirRequest(): CorteRequest {
