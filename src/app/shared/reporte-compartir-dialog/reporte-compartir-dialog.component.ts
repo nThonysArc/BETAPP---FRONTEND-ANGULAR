@@ -251,10 +251,23 @@ export class ReporteCompartirDialogComponent implements OnDestroy {
     }
   }
 
-  abrirWhatsApp(): void {
+  /**
+   * WhatsApp no deja adjuntar archivos por enlace (wa.me solo admite texto). Por eso:
+   * - Celular: se abre el menu nativo de compartir con la imagen ADJUNTA; ahi se toca WhatsApp y se elige el chat.
+   * - PC: se abre WhatsApp con el texto y la imagen queda copiada para pegarla (Ctrl+V) en el chat.
+   */
+  async abrirWhatsApp(): Promise<void> {
+    if (this.puedeCompartirArchivo()) {
+      await this.compartir();
+      return;
+    }
+    // window.open primero y sincrono: despues de un await el navegador puede bloquearlo como ventana emergente.
     window.open(`https://wa.me/?text=${encodeURIComponent(this.mensaje)}`, '_blank', 'noopener');
-    if (!this.puedeCompartirArchivo()) {
-      this.snackBar.open('Pega la imagen en el chat (usa "Copiar imagen" o "Descargar").', 'Cerrar', { duration: 6000 });
+    if (this.puedeCopiarImagen) {
+      await this.copiarImagen();
+      this.snackBar.open('Imagen copiada: pégala en el chat con Ctrl+V.', 'Cerrar', { duration: 6000 });
+    } else {
+      this.snackBar.open('Descarga la imagen y adjúntala en el chat.', 'Cerrar', { duration: 6000 });
     }
   }
 
