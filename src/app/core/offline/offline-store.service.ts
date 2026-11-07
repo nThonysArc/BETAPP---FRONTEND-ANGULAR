@@ -244,6 +244,54 @@ export class OfflineStore {
     return corte;
   }
 
+  /**
+   * Elimina un corte sin conexion. La pantalla lo deja de ver al instante.
+   *  - Si el corte aun no se habia enviado (id temporal negativo), basta con quitar su envio de la cola:
+   *    el servidor nunca llega a conocerlo.
+   *  - Si ya existe en el servidor, se encola el DELETE (con su motivo en la URL) y se descartan las
+   *    ediciones pendientes de ese corte, que ya no tienen sentido.
+   */
+  async encolarCorteEliminado(procesoId: number, corteId: number, url: string): Promise<null> {
+    const cortes = (await this.cacheGet<Corte[]>(claveCortes(procesoId))) ?? [];
+    const existente = cortes.find((c) => c.id === corteId)
+      ?? (await this.cacheGet<Corte>(claveCorte(procesoId, corteId)));
+    const pendientes = await offlineDb.todos<EscrituraPendiente>('outbox');
+
+    if (corteId < 0) {
+      const creacion = pendientes.find((p) => p.tipo === 'CORTE_CREAR' && p.idTemporal === corteId);
+      if (!creacion && !existente) {
+        throw new Error('Este corte no esta disponible sin conexion. Conectate para eliminarlo.');
+      }
+      if (creacion?.seq !== undefined) await offlineDb.eliminar('outbox', creacion.seq);
+    } else {
+      if (!existente) {
+        throw new Error('Este corte no esta disponible sin conexion. Conectate para eliminarlo.');
+      }
+      const base = url.split('?')[0];
+      for (const previa of pendientes) {
+        if (previa.tipo === 'CORTE_EDITAR' && previa.url.split('?')[0] === base && previa.seq !== undefined) {
+          await offlineDb.eliminar('outbox', previa.seq);
+        }
+      }
+      await this.agregarACola({
+        metodo: 'DELETE',
+        url,
+        cuerpo: null,
+        procesoId,
+        tipo: 'CORTE_ELIMINAR',
+        etiqueta: `Eliminar corte ${existente.numeroCorte}`,
+        creadoEn: new Date().toISOString()
+      });
+    }
+
+    await this.cachePut(claveCortes(procesoId), cortes.filter((c) => c.id !== corteId));
+    await this.cacheDelete(claveCorte(procesoId, corteId));
+    await this.cacheDelete(clavePlantilla(procesoId));
+    await this.ajustarTotalCortes(procesoId, -1);
+    await this.refrescarPendientes();
+    return null;
+  }
+
   async encolarMateriaPrima(
     procesoId: number,
     url: string,

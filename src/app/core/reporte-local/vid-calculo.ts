@@ -108,6 +108,20 @@ export function totalHora(h: HoraVid): number {
   return h.totalAjustado != null ? h.totalAjustado : totalCalculado(h);
 }
 
+/** Todos los modulos de un bloque ya calculado salieron a almorzar: se dibuja la barra "ALMUERZO DEL PERSONAL". */
+export function bloqueTodoAlmuerzo(b: BloqueHoraVid): boolean {
+  return b.filas.length > 0 && b.filas.every((f) => f.almuerzo);
+}
+
+/**
+ * Numera las horas de produccion 1, 2, 3... La hora en que TODO el personal almuerza no es produccion:
+ * no ocupa numero (queda en 0) y la siguiente hora continua la cuenta.
+ */
+export function numerarHorasVid(horas: HoraVid[]): HoraVid[] {
+  let n = 0;
+  return horas.map((h) => ({ ...h, numero: todoAlmuerzoVid(h) ? 0 : ++n }));
+}
+
 export function todoAlmuerzoVid(h: HoraVid): boolean {
   return h.modulos.length > 0 && h.modulos.every((m) => m.almuerzo);
 }
@@ -220,7 +234,7 @@ export function validarVid(horas: HoraVid[], r: ResultadoVid): Advertencia[] {
     if (previa && minutosDe(previa.fin) !== minutosDe(h.inicio)) {
       out.push({
         hora: h.numero, modulo: null, codigo: 'HUECO_HORARIO',
-        mensaje: `La hora ${h.numero} empieza a las ${hm(h.inicio)} pero la anterior termino a las ${hm(previa.fin)}.`
+        mensaje: `${todoAlmuerzoVid(h) ? 'El almuerzo' : `La hora ${h.numero}`} empieza a las ${hm(h.inicio)} pero la anterior termino a las ${hm(previa.fin)}.`
       });
     }
     if (h.totalAjustado != null && h.totalAjustado !== totalCalculado(h)) {

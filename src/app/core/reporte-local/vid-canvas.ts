@@ -8,7 +8,7 @@
  */
 import { Imagen, escalaSegura } from './reporte-canvas';
 import {
-  BloqueHoraVid, FilaModuloVid, ProcesadoDiaVid, ResultadoVid
+  BloqueHoraVid, FilaModuloVid, ProcesadoDiaVid, ResultadoVid, bloqueTodoAlmuerzo
 } from './vid-calculo';
 
 // ---- Paleta ----
@@ -87,7 +87,7 @@ const mayus = (s: string | null | undefined): string => (s ?? '').toLocaleUpperC
 const conArrastre = (r: ResultadoVid): boolean => r.porDia.length > 1;
 
 const textoObs = (f: FilaModuloVid): string =>
-  f.observacion && f.observacion.trim() !== '' ? f.observacion.trim() : f.almuerzo ? 'ALMUERZO' : '';
+  f.observacion && f.observacion.trim() !== '' ? f.observacion.trim() : '';
 
 const lineaDestacada = (l: string): boolean => {
   const u = l.trimStart().toLocaleUpperCase('en-US');
@@ -288,15 +288,17 @@ function tabla(p: Pintor, r: ResultadoVid, y0: number): number {
 
   let y = y0 + ALTO_ENCABEZADO;
   const cortes: number[] = [];
+  // Tramos de linea vertical que NO se dibujan (celdas combinadas): [indice de columna, y1, y2]
+  const omitir: [number, number, number][] = [];
   let yUltimo = y;
   for (const b of r.bloques) {
     yUltimo = y;
-    y = bloque(p, b, y);
+    y = bloque(p, b, y, omitir);
     cortes.push(y);
   }
 
   // La rejilla va DESPUES de todos los rellenos.
-  for (let c = 1; c < E.length - 1; c++) p.linea(E[c], y0, E[c], y, GRILLA, FINO, false);
+  for (let c = 1; c < E.length - 1; c++) lineaVertical(p, c, y0, y, omitir);
   p.linea(x0, y0, ANCHO, y0, GRILLA, FINO, false);
   p.linea(ANCHO, y0, ANCHO, y, GRILLA, FINO, false);
   p.linea(x0, y0 + ALTO_ENCABEZADO, ANCHO, y0 + ALTO_ENCABEZADO, GRILLA, FINO, false);
@@ -318,7 +320,36 @@ function observacion(p: Pintor, s: string, x: number, y: number, w: number, h: n
   lineas.forEach((l, i) => p.texto(l, x, arriba + i * LINEA_OBS, w + 8, LINEA_OBS, 1, lineaDestacada(l), FUENTE_OBS, NEGRO, 0));
 }
 
-function bloque(p: Pintor, b: BloqueHoraVid, y: number): number {
+/** Linea vertical de la columna c entre y1 y y2, saltando los tramos combinados (barra / recuadro de almuerzo). */
+function lineaVertical(p: Pintor, c: number, y1: number, y2: number, omitir: [number, number, number][]): void {
+  const huecos = omitir.filter((o) => o[0] === c).sort((a, b) => a[1] - b[1]);
+  let desde = y1;
+  for (const h of huecos) {
+    if (h[1] > desde) p.linea(E[c], desde, E[c], h[1], GRILLA, FINO, false);
+    desde = Math.max(desde, h[2]);
+  }
+  if (desde < y2) p.linea(E[c], desde, E[c], y2, GRILLA, FINO, false);
+}
+
+/** Almuerzo GENERAL: un solo recuadro combinado desde la columna HORA hasta OBSERVACIONES, sin numero de hora. */
+function recuadroAlmuerzoGeneral(p: Pintor, b: BloqueHoraVid, y: number, omitir: [number, number, number][]): number {
+  const lineas = ['ALMUERZO DE PERSONAL'];
+  for (const f of b.filas) {
+    const o = f.observacion?.trim();
+    if (o && !lineas.includes(o)) lineas.push(o);
+  }
+  const h = Math.max(MIN_BLOQUE + 4, lineas.length * LINEA_OBS + 20);
+  p.caja(E[0], y, ANCHO - E[0], h, ROSA, null, 0);
+  const arriba = y + (h - lineas.length * LINEA_OBS) / 2;
+  lineas.forEach((l, i) =>
+    p.texto(l, E[0], arriba + i * LINEA_OBS, ANCHO - E[0], LINEA_OBS, 1,
+      i === 0 || lineaDestacada(l), i === 0 ? 8.6 : FUENTE_OBS, NEGRO, 0));
+  for (let c = C_MODULO; c < E.length - 1; c++) omitir.push([c, y, y + h]);
+  return y + h;
+}
+
+function bloque(p: Pintor, b: BloqueHoraVid, y: number, omitir: [number, number, number][]): number {
+  if (bloqueTodoAlmuerzo(b)) return recuadroAlmuerzoGeneral(p, b, y, omitir);
   const filas = b.filas;
   const alturas = new Array<number>(Math.max(1, filas.length)).fill(0);
   let total = 0;
@@ -344,9 +375,15 @@ function bloque(p: Pintor, b: BloqueHoraVid, y: number): number {
     const f = filas[i];
     const h = alturas[i];
     p.texto(f.modulo, E[C_MODULO], yy, E[C_PERSONAS] - E[C_MODULO], h, 1, false, FUENTE_DATO, NEGRO, 0);
-    p.texto(String(f.personas), E[C_PERSONAS], yy, E[C_JABAS] - E[C_PERSONAS], h, 1, false, FUENTE_DATO, NEGRO, 0);
-    p.texto(plano(f.jabas), E[C_JABAS], yy, E[C_TOTAL] - E[C_JABAS], h, 1, false, FUENTE_DATO, NEGRO, 0);
-    p.texto(f.rendimiento == null ? '0' : String(f.rendimiento), E[C_REND], yy, E[C_OBS] - E[C_REND], h, 1, false, FUENTE_DATO, NEGRO, 0);
+    if (f.almuerzo) {
+      // Este modulo salio a almorzar: recuadro combinado PERSONAS + JABAS/HORA, sin cifras.
+      p.texto('ALMUERZO DE PERSONAL', E[C_PERSONAS], yy, E[C_TOTAL] - E[C_PERSONAS], h, 1, true, FUENTE_DATO, NEGRO, 0);
+      omitir.push([C_JABAS, yy, yy + h]);
+    } else {
+      p.texto(String(f.personas), E[C_PERSONAS], yy, E[C_JABAS] - E[C_PERSONAS], h, 1, false, FUENTE_DATO, NEGRO, 0);
+      p.texto(plano(f.jabas), E[C_JABAS], yy, E[C_TOTAL] - E[C_JABAS], h, 1, false, FUENTE_DATO, NEGRO, 0);
+      p.texto(f.rendimiento == null ? '0' : String(f.rendimiento), E[C_REND], yy, E[C_OBS] - E[C_REND], h, 1, false, FUENTE_DATO, NEGRO, 0);
+    }
     observacion(p, textoObs(f), E[C_OBS] + 4, yy, E[C_OBS + 1] - E[C_OBS] - 8, h);
     if (i < filas.length - 1) {
       const yb = yy + h;
@@ -360,8 +397,10 @@ function bloque(p: Pintor, b: BloqueHoraVid, y: number): number {
 
 function pie(p: Pintor, r: ResultadoVid, yTabla: number): number {
   const bq = r.bloques;
-  const ultimaHora = bq.length === 0 ? 0 : bq[bq.length - 1].totalHora;
-  const acumuladoPrevio = bq.length < 2 ? 0 : bq[bq.length - 2].acumulado;
+  // La barra de almuerzo no es una hora de produccion: TOTAL es la ultima hora que si produjo.
+  const ultimaProd = [...bq].reverse().find((b) => !bloqueTodoAlmuerzo(b));
+  const ultimaHora = ultimaProd ? ultimaProd.totalHora : 0;
+  const acumuladoPrevio = ultimaProd ? ultimaProd.acumulado - ultimaProd.totalHora : 0;
   const filas: [string, string][] = [
     ['TOTAL', num(ultimaHora)],
     ['ACUMULADO ANTERIOR', num(acumuladoPrevio)],

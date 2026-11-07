@@ -23,6 +23,7 @@ function procesoDe(url: string): number | null {
 type Escritura =
   | { tipo: 'CORTE_CREAR'; procesoId: number }
   | { tipo: 'CORTE_EDITAR'; procesoId: number; corteId: number }
+  | { tipo: 'CORTE_ELIMINAR'; procesoId: number; corteId: number }
   | { tipo: 'MATERIA_PRIMA'; procesoId: number }
   | { tipo: 'PROYECCION'; procesoId: number }
   | { tipo: 'STOCK_ANTERIOR'; procesoId: number }
@@ -36,6 +37,9 @@ function clasificar(req: HttpRequest<unknown>): Escritura | null {
   }
   if (req.method === 'PUT' && (m = url.match(/\/procesos\/(\d+)\/cortes\/(-?\d+)$/))) {
     return { tipo: 'CORTE_EDITAR', procesoId: Number(m[1]), corteId: Number(m[2]) };
+  }
+  if (req.method === 'DELETE' && (m = url.match(/\/procesos\/(\d+)\/cortes\/(-?\d+)$/))) {
+    return { tipo: 'CORTE_ELIMINAR', procesoId: Number(m[1]), corteId: Number(m[2]) };
   }
   if (req.method === 'PUT' && (m = url.match(/\/procesos\/(\d+)\/materia-prima$/))) {
     return { tipo: 'MATERIA_PRIMA', procesoId: Number(m[1]) };
@@ -123,7 +127,7 @@ export const offlineInterceptor: HttpInterceptorFn = (req, next) => {
   const encolar$ = (): Observable<HttpEvent<unknown>> =>
     from(encolar(store, escritura, req)).pipe(
       tap(() => sync.programar()),
-      switchMap((cuerpo) => respuesta(req, cuerpo, req.method === 'POST' ? 201 : 200)),
+      switchMap((cuerpo) => respuesta(req, cuerpo, req.method === 'POST' ? 201 : req.method === 'DELETE' ? 204 : 200)),
       catchError((e) => throwError(() => new HttpErrorResponse({
         status: 409,
         error: { message: e instanceof Error ? e.message : 'No se pudo guardar sin conexion' }
@@ -154,6 +158,8 @@ async function encolar(store: OfflineStore, e: Escritura, req: HttpRequest<unkno
       return store.encolarCorteNuevo(e.procesoId, req.url, req.body as CorteRequest);
     case 'CORTE_EDITAR':
       return store.encolarCorteEditado(e.procesoId, e.corteId, req.url, req.body as CorteRequest);
+    case 'CORTE_ELIMINAR':
+      return store.encolarCorteEliminado(e.procesoId, e.corteId, req.url);
     case 'MATERIA_PRIMA':
       return store.encolarMateriaPrima(e.procesoId, req.url, req.body as IngresoMateriaPrimaRequest);
     case 'PROYECCION':

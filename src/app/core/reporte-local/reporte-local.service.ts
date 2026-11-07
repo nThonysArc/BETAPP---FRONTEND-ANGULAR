@@ -13,7 +13,7 @@ import { ProductoService } from '../services/producto.service';
 import { respuestaAvanceLocal } from './avance-vivo-local';
 import { Imagen, cargarImagen, renderizarReportePng } from './reporte-canvas';
 import { ReporteDatos, construirDatosReporte } from './reporte-datos';
-import { HoraVid, ResultadoVid, calcularVid, validarVid } from './vid-calculo';
+import { HoraVid, ResultadoVid, calcularVid, numerarHorasVid, validarVid } from './vid-calculo';
 import { renderizarReporteVidPng } from './vid-canvas';
 
 export interface ReporteLocal {
@@ -105,8 +105,8 @@ export class ReporteLocalService {
                     lista.map((c) => `${c.pesoTotalEfectivo}/${c.jabasTotalEfectivo}`).join(',')
                 };
                 if (plantilla === 'VID') {
-                  const horas = [...cortes].sort((a, b) => a.numeroCorte - b.numeroCorte)
-                    .map((c) => horaVidDeCorte(c, supervisorPorMaquina));
+                  const horas = numerarHorasVid([...cortes].sort((a, b) => a.numeroCorte - b.numeroCorte)
+                    .map((c) => horaVidDeCorte(c, supervisorPorMaquina)));
                   const resultado = calcularVid(horas, {
                     fechaProceso: proceso.fecha,
                     ingresoDia: ingresos.reduce((a, i) => a + (Number(i.jabas) || 0), 0),

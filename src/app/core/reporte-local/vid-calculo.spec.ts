@@ -1,4 +1,4 @@
-import { HoraVid, calcularVid, rendimiento, validarVid } from './vid-calculo';
+import { HoraVid, bloqueTodoAlmuerzo, calcularVid, numerarHorasVid, rendimiento, validarVid } from './vid-calculo';
 import { horaVidDeCorte, slugProducto } from './reporte-local.service';
 import { Corte } from '../models/corte.model';
 
@@ -24,6 +24,20 @@ describe('Vid en el dispositivo (paridad con el servidor)', () => {
     expect(r.proyeccion).toBe(4000);
     expect(r.bloques[7].acumulado).toBe(3969);
     expect(calcularVid(horas, ctx({ ingresoDia: 4529, proyeccion: 4000 })).proyeccion).toBe(4000);
+  });
+
+  it('la hora en que todo el personal almuerza no ocupa numero y la siguiente continua la cuenta', () => {
+    const almuerzoTodos: HoraVid = {
+      ...h(2, '09:00:00', '10:00:00', 0, null),
+      modulos: [{ ...h(2, '09:00:00', '10:00:00', 0, null).modulos[0], almuerzo: true }]
+    };
+    const numeradas = numerarHorasVid([h(1, '08:00:00', '09:00:00', 100, null), almuerzoTodos, h(3, '10:00:00', '11:00:00', 120, null)]);
+    expect(numeradas.map((x) => x.numero)).toEqual([1, 0, 2]);
+
+    const r = calcularVid(numeradas, ctx());
+    expect(bloqueTodoAlmuerzo(r.bloques[1])).toBeTrue();
+    expect(bloqueTodoAlmuerzo(r.bloques[0])).toBeFalse();
+    expect(r.procesadoDia).toBe(220);
   });
 
   it('separa el stock heredado de dias previos del ingreso del dia', () => {

@@ -80,6 +80,13 @@ export class OfflineSyncService {
       return true;
     } catch (e) {
       const err = e as HttpErrorResponse;
+      // Eliminar algo que ya no existe (otro dispositivo lo borro antes) deja el mismo resultado: se da por hecho.
+      if (item.tipo === 'CORTE_ELIMINAR' && err.status === 404) {
+        this.store.marcarConRed();
+        if (item.seq !== undefined) await this.store.quitarDeCola(item.seq);
+        if (this.store.pendientes().length === 0) this.version.update((v) => v + 1);
+        return true;
+      }
       if (esFalloDeRed(err)) {
         this.store.marcarSinRed();
         return false;

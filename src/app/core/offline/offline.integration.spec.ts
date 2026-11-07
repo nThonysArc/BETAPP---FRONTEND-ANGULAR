@@ -221,4 +221,57 @@ describe('capa sin conexion', () => {
     await fin;
     expect(store.pendientes().length).toBe(0);
   });
+
+  it('eliminar sin red un corte aun no enviado lo quita de la cola: el servidor nunca lo conoce', async () => {
+    store.enLinea.set(false);
+    const creado = await new Promise<Corte>((ok) =>
+      http.post<Corte>(`${API}/procesos/${PID}/cortes`, peticion('u-borrar', 3)).subscribe(ok));
+    expect(store.pendientes().length).toBe(1);
+
+    await new Promise((ok) =>
+      http.delete(`${API}/procesos/${PID}/cortes/${creado.id}?motivo=error`).subscribe(ok));
+
+    expect(store.pendientes().length).toBe(0);
+    const lista = await store.cacheGet<Corte[]>(`${API}/procesos/${PID}/cortes`);
+    expect(lista?.length).toBe(0);
+  });
+
+  it('eliminar sin red un corte del servidor se encola con su motivo, lo oculta al instante y se envia al volver la red', async () => {
+    const lista = [{ id: 5, numeroCorte: 1, detalles: [], supervisores: [], horaInicio: '07:00:00', horaFin: '08:00:00' }];
+    const pLectura = new Promise((ok) => http.get(`${API}/procesos/${PID}/cortes`).subscribe(ok));
+    (await siguiente(`${API}/procesos/${PID}/cortes`)).flush(lista);
+    await pLectura;
+
+    store.enLinea.set(false);
+    await new Promise((ok) =>
+      http.delete(`${API}/procesos/${PID}/cortes/5?motivo=por%20error`).subscribe(ok));
+    expect(store.pendientes().length).toBe(1);
+    expect(store.pendientes()[0].tipo).toBe('CORTE_ELIMINAR');
+
+    const local = await new Promise<Corte[]>((ok) => http.get<Corte[]>(`${API}/procesos/${PID}/cortes`).subscribe(ok));
+    expect(local.length).toBe(0);
+
+    store.enLinea.set(true);
+    const fin = sync.sincronizar();
+    const envio = await siguiente(`${API}/procesos/${PID}/cortes/5?motivo=por%20error`);
+    expect(envio.request.method).toBe('DELETE');
+    envio.flush(null, { status: 204, statusText: 'No Content' });
+    await fin;
+    expect(store.pendientes().length).toBe(0);
+  });
+
+  it('si el corte ya no existe en el servidor (404) al enviar el borrado, se da por hecho y la cola sigue', async () => {
+    const lista = [{ id: 6, numeroCorte: 1, detalles: [], supervisores: [], horaInicio: '07:00:00', horaFin: '08:00:00' }];
+    const pLectura = new Promise((ok) => http.get(`${API}/procesos/${PID}/cortes`).subscribe(ok));
+    (await siguiente(`${API}/procesos/${PID}/cortes`)).flush(lista);
+    await pLectura;
+
+    store.enLinea.set(false);
+    await new Promise((ok) => http.delete(`${API}/procesos/${PID}/cortes/6?motivo=x`).subscribe(ok));
+    store.enLinea.set(true);
+    const fin = sync.sincronizar();
+    (await siguiente(`${API}/procesos/${PID}/cortes/6?motivo=x`)).flush({ message: 'no existe' }, { status: 404, statusText: 'Not Found' });
+    await fin;
+    expect(store.pendientes().length).toBe(0);
+  });
 });

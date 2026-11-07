@@ -28,6 +28,11 @@ export class CorteService {
     return this.http.post<Corte>(this.baseUrl(procesoDiarioId), request);
   }
 
+  /** El motivo va en la URL (no en el cuerpo) para que la cola sin conexion la conserve tal cual. */
+  eliminar(procesoDiarioId: number, corteId: number, motivo: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl(procesoDiarioId)}/${corteId}?motivo=${encodeURIComponent(motivo)}`);
+  }
+
   actualizar(procesoDiarioId: number, corteId: number, request: CorteRequest): Observable<Corte> {
     return this.http.put<Corte>(`${this.baseUrl(procesoDiarioId)}/${corteId}`, request);
   }

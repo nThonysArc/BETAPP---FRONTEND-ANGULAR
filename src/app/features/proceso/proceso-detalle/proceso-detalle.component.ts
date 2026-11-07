@@ -23,6 +23,7 @@ import { numerosDeHora } from '../../../core/utils/horas-corte.util';
 import { toIsoDateString } from '../../../core/utils/date.util';
 import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-dialog.component';
 import { ReporteCompartirDialogComponent } from '../../../shared/reporte-compartir-dialog/reporte-compartir-dialog.component';
+import { MotivoDialogComponent } from '../../../shared/motivo-dialog/motivo-dialog.component';
 import { LoadingSpinnerComponent } from '../../../shared/loading-spinner/loading-spinner.component';
 
 @Component({
@@ -190,6 +191,40 @@ export class ProcesoDetalleComponent {
     const proceso = this.proceso();
     if (!proceso) return;
     this.router.navigate(['/procesos', proceso.id, 'cortes', corteId, 'editar']);
+  }
+
+  /** Pide el motivo y elimina el corte (queda auditado). Sin red, se encola y se envia al volver. */
+  eliminarCorte(corte: Corte, evento: Event): void {
+    evento.stopPropagation(); // no abrir el corte al pulsar el icono
+    const proceso = this.proceso();
+    if (!proceso) return;
+    const hora = this.horaDeCorte().get(corte.id);
+    const nombre = hora === null || hora === undefined ? 'el almuerzo' : `la hora ${hora}`;
+
+    this.dialog.open(MotivoDialogComponent, {
+      width: '440px',
+      data: {
+        titulo: 'Eliminar corte',
+        mensaje: `Se eliminara ${nombre} (${corte.horaInicio} a ${corte.horaFin}) con todo su detalle. Esto cambia el avance acumulado y no se puede deshacer.`,
+        textoConfirmar: 'Eliminar',
+        color: 'warn'
+      }
+    }).afterClosed().subscribe((motivo?: string) => {
+      if (!motivo) return;
+      this.corteService.eliminar(proceso.id, corte.id, motivo).subscribe({
+        next: () => {
+          this.cargarCortes(proceso.id);
+          this.procesoDiarioService.obtener(proceso.id).subscribe({
+            next: (p) => this.proceso.set(p),
+            error: () => undefined
+          });
+          this.snackBar.open('Corte eliminado', 'Cerrar', { duration: 3000 });
+        },
+        error: (err: HttpErrorResponse) => {
+          this.snackBar.open(err.error?.message ?? 'No se pudo eliminar el corte', 'Cerrar', { duration: 5000 });
+        }
+      });
+    });
   }
 
   verIngreso(): void {

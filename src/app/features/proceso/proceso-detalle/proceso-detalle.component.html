@@ -123,7 +123,13 @@
           <th mat-header-cell *matHeaderCellDef></th>
           <td mat-cell *matCellDef="let c" [attr.data-label]="c.requiereRevision ? 'Revisión' : null" data-ancho>
             @if (c.requiereRevision) {
-              <mat-icon title="Requiere revision - un corte anterior fue editado" class="alerta">warning</mat-icon>
+              <mat-icon title="Requiere revision - un corte anterior fue editado o eliminado" class="alerta">warning</mat-icon>
+            }
+            @if (auth.tiene('CORTES_ELIMINAR') && proceso()!.estado === 'ABIERTO') {
+              <button mat-icon-button type="button" (click)="eliminarCorte(c, $event)"
+                      title="Eliminar corte" aria-label="Eliminar corte">
+                <mat-icon>delete</mat-icon>
+              </button>
             }
           </td>
         </ng-container>
